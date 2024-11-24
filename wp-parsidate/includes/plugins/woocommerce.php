@@ -70,7 +70,6 @@ if ( ! class_exists( 'WPP_WooCommerce' ) ) {
 			}
 		}
 
-
 		/**
 		 * Returns an instance of class
 		 *
@@ -184,7 +183,7 @@ if ( ! class_exists( 'WPP_WooCommerce' ) ) {
 				wp_enqueue_script( 'wpp_jalali_datepicker', WP_PARSI_URL . 'assets/js/jalalidatepicker.min.js', array( 'jquery-ui-datepicker' ), WP_PARSI_VER );
 				wp_enqueue_style( 'wpp_jalali_datepicker', WP_PARSI_URL . "assets/css/jalalidatepicker$suffix.css", null, WP_PARSI_VER );
 
-				do_action( 'wpp_jalai_datepicker_enqueued', 'wc' );
+				do_action( 'wpp_jalali_datepicker_enqueued', 'wc' );
 			}
 		}
 
@@ -425,7 +424,6 @@ if ( ! class_exists( 'WPP_WooCommerce' ) ) {
 			$data_store->sort_all_product_variations( $parent->get_id() );
 
 			for ( $i = 0; $i <= $max_loop; $i ++ ) {
-
 				if ( ! isset( $_POST['variable_post_id'][ $i ] ) ) {
 					continue;
 				}

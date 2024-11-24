@@ -3,7 +3,7 @@ defined( 'ABSPATH' ) || exit( 'No direct script access allowed' );
 
 /**
  * Plugin Name: WP-Parsidate
- * Version: 5.1.1
+ * Version: 5.1.2
  * Plugin URI: https://wp-parsi.com/support/
  * Description: Persian package for WordPress, Adds full RTL and Shamsi (Jalali) support for: posts, comments, pages, archives, search, categories, permalinks and all admin sections and TinyMce editor, lists, quick editor. This package has Jalali archive widget.
  * Author: WP-Parsi Team
@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit( 'No direct script access allowed' );
  * Requires at least: 5.2
  * Requires PHP: 7.4
  * WC tested up to: 9.3.3
- * License: GPL3
+ * License: GPLv3
  *
  * WP-Parsidate is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@ defined( 'ABSPATH' ) || exit( 'No direct script access allowed' );
  * @author              Mobin Ghasempoor
  * @author              Morteza Geransayeh
  * @link                https://wp-parsi.com/
- * @version             5.1.0
+ * @version             5.1.2
  * @license             http://www.gnu.org/licenses/gpl-3.0.html GNU Public License v3.0
  * @package             WP-Parsidate
  * @subpackage          Core
@@ -74,7 +74,7 @@ final class WP_Parsidate {
 		add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), array( $this, 'parsi_settings_link' ) );
 		add_action( 'widgets_init', array( $this, 'register_widget' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'wpp_load_vazir_font_in_admin_area' ) );
-		add_action( 'wpp_jalai_datepicker_enqueued', array( $this, 'wpp_localize_months_name' ) );
+		add_action( 'wpp_jalali_datepicker_enqueued', array( $this, 'wpp_localize_months_name' ) );
 	}
 
 	/**
