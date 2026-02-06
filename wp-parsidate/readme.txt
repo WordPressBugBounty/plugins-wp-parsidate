@@ -3,8 +3,8 @@ Contributors: lord_viper, man4toman, parselearn, yazdaniwp, saeedfard, iehsanir,
 Donate link: https://wp-parsi.com/support/
 Tags: shamsi, persian, jalali, ووکامرس, woocommerce
 Requires at least: 5.3
-Tested up to: 6.8
-Stable tag: 5.1.8
+Tested up to: 6.9
+Stable tag: 5.1.8.2
 License: GPLv3
 
 Persian date support for WordPress
@@ -46,6 +46,13 @@ List of some features:
 6. Persian date type in ACF
 
 == Changelog ==
+
+= 5.1.8.2 =
+* Are you ready for next version?
+
+= 5.1.8.1 =
+* Just for info tested up
+* Are you ready for next version?
 
 = 5.1.8 =
 * Improved multilingual compatibility
