@@ -76,10 +76,6 @@ class WooCommerce extends Addon {
 
       // WC_Order class, get_address_prop method, Filter: 'woocommerce_order_get_[billing|shipping]_[prop]'
       add_filter( 'woocommerce_order_get_shipping_phone', [ $this, 'fixPersianNumbersInPhone' ], 9999, 2 );
-      // @TODO: Sanitize or fix phone in block checkout page is a issue I cant fixed, We need add filter on phone for fix and validate in block type
-      // Footprint of phone sanitizing and validating in AbstractAddressSchema::sanitize_callback
-      // Fix persian number in phone field value in block type checkout page currently not worked
-      // WC_Validation::is_phone has error for Persian number in phone field
 
       if ( $this->getSetting( 'validate_postcode', false ) ) {
         add_filter( 'woocommerce_validate_postcode', [ $this, 'validatePostcode' ], 10, 3 );
@@ -87,6 +83,7 @@ class WooCommerce extends Addon {
 
       if ( $this->getSetting( 'validate_phone', false ) ) {
         add_action( 'woocommerce_after_checkout_validation', [ $this, 'validatePhoneNumber' ], 10, 2 );
+        add_filter( 'woocommerce_validate_phone', [ $this, 'validatePhone' ], 10, 3 );
       }
     }
   }
@@ -108,7 +105,7 @@ class WooCommerce extends Addon {
 
   /**
    * @param $data
-   * @param  \WP_Error  $errors  WP Error
+   * @param \WP_Error $errors WP Error
    *
    * @return void
    */
@@ -116,8 +113,25 @@ class WooCommerce extends Addon {
     // This pattern ensures the phone number follows the specified structure for both mobile and landline numbers
     if ( ! preg_match( '/^(0|0098|\+98)?(9\d{9}|[1-8]\d{9,10})$/',
       Number::toEnglish( wc_get_post_data_by_key( 'billing_phone' ) ) ) ) {
-      $errors->add( 'invalid_phone', esc_html__( '<strong>Phone number</strong> is invalid.', 'wp-parsidate' ) );
+      $errors->add( 'invalid_phone', __( '<strong>Phone number</strong> is invalid.', 'wp-parsidate' ) );
     }
+  }
+
+  /**
+   * Validate phone number
+   *
+   * @param bool $valid Whether the phone number passed the default validation.
+   * @param string $phone The phone number being validated.
+   * @param string|null $country The country code the phone is being validated for, or null if unknown.
+   */
+  public function validatePhone( $valid, $phone, $country ): bool {
+    if ( $valid ) {
+      return $valid;
+    }
+
+    $phone = Number::toEnglish( $phone );
+
+    return (bool) preg_match( '/^(0|0098|\+98)?(9\d{9}|[1-8]\d{9,10})$/', $phone );
   }
 
   /**
@@ -142,7 +156,7 @@ class WooCommerce extends Addon {
    * Convert Non-Persian Values in checkout to Persian
    *
    * @method  convertNonPersianValuesInCheckout
-   * @param  array  $data
+   * @param array $data
    *
    * @return  array modified $data
    * @version 1.0.0
@@ -192,7 +206,7 @@ class WooCommerce extends Addon {
    * replace Arabic characters with equivalent character in Persian
    *
    * @method  fixPersianCharacters
-   * @param  string  $string
+   * @param string $string
    *
    * @return  string filtered $string
    * @version 1.0.0
@@ -269,8 +283,8 @@ class WooCommerce extends Addon {
   /**
    * Fix non-persian digits in checkout phone field
    *
-   * @param  string  $phone  The address property value.
-   * @param  \WC_Order  $order  The order object being read.
+   * @param string $phone The address property value.
+   * @param \WC_Order $order The order object being read.
    *
    * @since 6.0
    */
@@ -553,7 +567,7 @@ class WooCommerce extends Addon {
   /**
    * Convert selected Jalali dates to gregorian on woocommerce save non-variable products
    *
-   * @param  $product_id  $
+   * @param  $product_id $
    *
    * @return          void
    * @author HamidReza Yazdani
@@ -855,6 +869,7 @@ class WooCommerce extends Addon {
       'force_enable'     => true,
       'has_page'         => false,
       'icon'             => $svg,
+      'image_link'       => 'https://wordpress.org/plugins/woocommerce/',
       'tags'             => [ esc_html__( 'WooCommerce', 'wp-parsidate' ) ],
       'cat'              => 'ecommerce',
       'settings_key'     => $this->addonID,

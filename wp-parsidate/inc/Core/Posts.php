@@ -9,7 +9,7 @@ namespace WPParsidate\Core;
 
 defined( 'ABSPATH' ) || exit;
 
-use WPParsidate\Helper\Param;
+use WPParsidate\Helper\{Cache, Number, Param};
 
 class Posts {
   public function __construct() {
@@ -19,8 +19,8 @@ class Posts {
   /**
    * Converts post date pointer to Jalali pointer
    *
-   * @param  string  $where
-   * @param  \WP_Query|string  $wp_query
+   * @param string $where
+   * @param \WP_Query|string $wp_query
    *
    * @return string
    */
@@ -156,7 +156,7 @@ class Posts {
   /**
    * Limits posts to a certain date, if date set
    *
-   * @param  string  $where  Query pointer
+   * @param string $where Query pointer
    *
    * @return              string New Pointer
    */
@@ -174,8 +174,6 @@ class Posts {
   /**
    * Restrict posts to given date
    * @return            void
-   * @author            Parsa Kafi
-   * @author            Mobin Ghasempoor
    */
   public function addMonthYearSelectPostFilter(): void {
     global $post_type, $post_status, $wpdb;
@@ -184,49 +182,58 @@ class Posts {
       return;
     }
 
-    $post_status_w = "AND post_status <> 'auto-draft'";
+    $cacheKey = 'post_select_months_list_' . md5( $post_type . $post_status );
+    $list     = Cache::get( $cacheKey );
 
-    if ( $post_status !== "" ) {
-      if ( is_string( $post_status ) ) {
-        $post_status_w .= " AND post_status = '$post_status'";
+    if ( false === $list ) {
+      $post_status_w = " AND post_status IN ('publish', 'future', 'draft', 'pending', 'private')";
+
+      if ( $post_status !== "" && is_string( $post_status ) ) {
+        $post_status_w = $wpdb->prepare( " AND post_status = %s", $post_status );
       }
-    } else {
-      $post_status_w .= " AND post_status <> 'trash'";
-    }
 
-    $list = $wpdb->get_col( "SELECT DISTINCT date( post_date ) AS date
-        FROM $wpdb->posts
-        WHERE post_type='$post_type' $post_status_w AND date( post_date ) <> '0000-00-00'
-        ORDER BY post_date" );
+      $query = $wpdb->prepare( "
+            SELECT post_date
+            FROM {$wpdb->posts}
+            WHERE post_type = %s
+            {$post_status_w}
+            AND post_date > '1000-01-01 00:00:00'
+            GROUP BY YEAR(post_date), MONTH(post_date)
+            ORDER BY post_date DESC
+        ", $post_type );
+
+      $list = $wpdb->get_col( $query );
+
+      if ( ! empty( $list ) ) {
+        Cache::set( $cacheKey, $list, 2 * HOUR_IN_SECONDS );
+      }
+    }
 
     if ( empty( $list ) ) {
       return;
     }
 
-    $m          = isset( $_GET['mfa'] ) ? (int) $_GET['mfa'] : 0;
+    $m          = (int) Param::get( 'mfa', 0 );
     $predate    = '';
     $monthsName = Names::getMonths();
 
     echo '<select name="mfa">';
-    echo '<option ' . selected( $m, 0, false ) . ' value="0">' . esc_html__( 'Show All Dates',
-        'wp-parsidate' ) . '</option>' . PHP_EOL;
+    echo '<option ' . selected( $m, 0, false ) . ' value="0">' . esc_html__( 'Show All Dates', 'wp-parsidate' ) . '</option>' . PHP_EOL;
 
     foreach ( $list as $date ) {
-      $date  = parsidate( 'Ym', $date, 'eng' );
-      $year  = substr( $date, 0, 4 );
-      $month = substr( $date, 4, 2 );
-      $month = $monthsName[ (int) $month ];
+      $date      = parsidate( 'Ym', $date, 'eng' );
+      $year      = substr( $date, 0, 4 );
+      $month     = substr( $date, 4, 2 );
+      $monthName = $monthsName[ (int) $month ];
 
       if ( $predate !== $date ) {
         echo sprintf( '<option %s value="%s">%s</option>',
           selected( $m, $date, false ),
           esc_html( $date ),
-          esc_html( $month . ' ' . fix_number( $year ) ) );
+          esc_html( $monthName . ' ' . Number::toPersian( $year ) ) );
       }
-
       $predate = $date;
     }
-
     echo '</select>';
   }
 }

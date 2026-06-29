@@ -3,10 +3,7 @@
 namespace WPParsidate\Admin;
 
 use WPParsidate\Addons\Addons;
-use WPParsidate\Helper\Assets;
-use WPParsidate\Helper\Cache;
-use WPParsidate\Helper\JSON;
-use WPParsidate\Helper\Notice;
+use WPParsidate\Helper\{Assets, Cache, JSON, Notice};
 
 defined( 'ABSPATH' ) || exit;
 
@@ -289,14 +286,14 @@ class AdminAbout {
       return $githubContributors;
     }
 
-    $teamMembers        = self::getTeamMembers();
+    $ignoreContributors = array_merge( array_keys( self::getTeamMembers() ), [ 'dependabot[bot]' ] );
     $githubContributors = [];
     $response           = wp_remote_get( 'https://api.github.com/repos/wordpress-parsi/wp-parsidate/contributors' );
     if ( is_array( $response ) && ! is_wp_error( $response ) ) {
       $contributors = JSON::decode( wp_remote_retrieve_body( $response ) );
       foreach ( $contributors as $contributor ) {
         // Skip if the contributor is a team member
-        if ( array_key_exists( $contributor->login, $teamMembers ) ) {
+        if ( in_array( $contributor->login, $ignoreContributors, true ) ) {
           continue;
         }
 
@@ -307,7 +304,8 @@ class AdminAbout {
         );
       }
 
-      Cache::set( 'github_contributors', $githubContributors, WEEK_IN_SECONDS );
+      Cache::set( 'github_contributors', $githubContributors,
+        WP_PARSI_DEBUG_MODE ? MINUTE_IN_SECONDS * 10 : WEEK_IN_SECONDS );
     }
 
     return $githubContributors;
@@ -376,7 +374,7 @@ class AdminAbout {
   }
 
   public function notice(): void {
-    if ( get_locale() !== 'fa_IR' ) {
+    if ( get_user_locale() !== 'fa_IR' ) {
       Notice::add( self::tab, esc_html__( 'The text of this page is in Persian.', 'wp-parsidate' ), 'warning' );
     }
   }

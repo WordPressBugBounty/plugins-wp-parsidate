@@ -9,8 +9,7 @@ namespace WPParsidate\App\Core;
 
 defined( 'ABSPATH' ) || exit;
 
-use WPParsidate\Helper\Notice;
-use WPParsidate\Helper\WordPress;
+use WPParsidate\Helper\{Notice, WordPress};
 use WPParsidate\Settings\Settings;
 
 class Core {
@@ -54,6 +53,15 @@ class Core {
         'type'     => 'toggle',
         'default'  => false,
         'desc'     => esc_html__( 'By enabling this, Dates will convert to Shamsi (Jalali) dates', 'wp-parsidate' ),
+        'sanitize' => 'bool'
+      ),
+      'dual_date'            => array(
+        'id'       => 'dual_date',
+        'title'    => esc_html__( 'Dual date', 'wp-parsidate' ),
+        'type'     => 'toggle',
+        'default'  => false,
+        'desc'     => esc_html__( 'By enabling this, Gregorian dates will be displayed beside Shamsi (Jalali) dates.',
+          'wp-parsidate' ),
         'sanitize' => 'bool'
       ),
       'months_name_type'     => array(
@@ -113,14 +121,14 @@ class Core {
           'wp-parsidate' ),
         'sanitize' => 'bool'
       ),
-      'local_text_domain'    => array(
+      /*'local_text_domain'    => array(
         'id'       => 'local_text_domain',
         'title'    => esc_html__( 'Load translate file', 'wp-parsidate' ),
         'type'     => 'toggle',
         'default'  => false,
         'desc'     => esc_html__( 'Load translate file from plugin directory.', 'wp-parsidate' ),
         'sanitize' => 'bool'
-      ),
+      ),*/
       'end_grid_plugin'      => array(
         'type' => 'endGrid',
       ),

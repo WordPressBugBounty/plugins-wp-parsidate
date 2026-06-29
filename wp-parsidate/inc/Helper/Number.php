@@ -6,14 +6,15 @@ class Number {
   /**
    * Fix numbers and convert them to Persian digits style
    *
-   * @param  string  $content
+   * @param string $content
    *
    * @return string Fixed number
    */
   public static function fixNumber( string $content ): string {
-    return preg_replace_callback( '/(?:&#\d{2,4};)|(?:[0]?[a-z][\x20-\x3B=\x3F-\x7F]*)|(?<![>=<][\s*])(\b\d+\b)|<\s*[^>]+>/i',
-      static function ( $content ) {
-        return isset( $content[1] ) ? self::toPersian( $content[1] ) : $content[0];
+    return preg_replace_callback(
+      '~<(script|style|textarea|pre|code)\b[^>]*>.*?</\1>(*SKIP)(*F)|(?:&#\d{2,4};)|(?:[0]?[a-z][\x20-\x3B=\x3F-\x7F]*)|(\d+(?:\.\d+)?)|<\s*[^>]+>~isu',
+      static function ( $matches ) {
+        return isset( $matches[2] ) ? self::toPersian( $matches[2] ) : $matches[0];
       }, $content );
     //return preg_replace_callback( '/(?:&#\d{2,4};)|(?:[0]?[a-z][\x20-\x3B=\x3F-\x7F]*)|(\d+[\d]*)|<\s*[^>]+>/i', 'persian_number', $content );
   }
@@ -21,7 +22,7 @@ class Number {
   /**
    * Converts English numbers to Persian numbers in post contents
    *
-   * @param  string  $content  Post content
+   * @param string $content Post content
    *
    * @return  string Formatted content
    */
@@ -32,7 +33,7 @@ class Number {
   /**
    * Converts English digits to Persian digits
    *
-   * @param  string  $number  Numbers
+   * @param string $number Numbers
    *
    * @return string Formatted numbers
    */
@@ -47,7 +48,7 @@ class Number {
   /**
    * Converts Persian digits to English digits
    *
-   * @param  string  $number  Numbers
+   * @param string $number Numbers
    *
    * @return              string Formatted numbers
    */

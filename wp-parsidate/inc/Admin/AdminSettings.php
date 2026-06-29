@@ -4,13 +4,7 @@ namespace WPParsidate\Admin;
 
 defined( 'ABSPATH' ) || exit;
 
-use WPParsidate\Helper\Cache;
-use WPParsidate\Helper\Helper;
-use WPParsidate\Helper\HTML;
-use WPParsidate\Helper\Notice;
-use WPParsidate\Helper\Param;
-use WPParsidate\Helper\Sanitizing;
-use WPParsidate\Helper\Validating;
+use WPParsidate\Helper\{Cache, HTML, Notice, Param, Sanitizing, Validating};
 use WPParsidate\Settings\Settings;
 
 class AdminSettings {
@@ -297,6 +291,7 @@ class AdminSettings {
 
     if ( ! empty( $setting['sanitize'] ) && method_exists( Sanitizing::class, $setting['sanitize'] ) ) {
       $value = Sanitizing::{$setting['sanitize']}( $value );
+      $value = wp_slash( $value );
     }
 
     return $value;
@@ -349,8 +344,7 @@ class AdminSettings {
           if ( isset( $field['force_value'] ) ) {
             $field['setting_value'] = $field['force_value'];
           } elseif ( isset( $field['id'] ) ) {
-            $field['setting_value'] = wp_unslash( Settings::get( $field['id'], $field['default'],
-              $optionsName ) );
+            $field['setting_value'] = Settings::get( $field['id'], $field['default'], $optionsName );
           }
 
           $field['type'] = strtolower( $field['type'] );

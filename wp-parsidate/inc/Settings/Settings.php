@@ -4,8 +4,7 @@ namespace WPParsidate\Settings;
 
 defined( 'ABSPATH' ) || exit;
 
-use WPParsidate\Helper\Cache;
-use WPParsidate\Helper\Validating;
+use WPParsidate\Helper\{Cache, Validating};
 
 class Settings {
   public static function addToArray( $key, $value, $optionsName = null, $reverse = false ): bool {
@@ -61,19 +60,18 @@ class Settings {
     return update_option( $optionsName, $newOptions, false );
   }
 
-  public static function get( string $key = null, $default = null, $optionsName = null, bool $useCache = true ) {
+  public static function get( ?string $key = null, $default = null, $optionsName = null, bool $useCache = true ) {
     $optionsName = is_string( $optionsName ) ? WP_PARSI_KEY . '_' . $optionsName : WP_PARSI_KEY;
     $options     = Cache::get( 'options_' . $optionsName, false );
 
     if ( ! $useCache || ! is_array( $options ) ) {
       $options = get_option( $optionsName, [] );
       $options = is_array( $options ) ? $options : [];
-      Cache::set( 'options_' . $optionsName, $options, DAY_IN_SECONDS, false );
+      Cache::set( 'options_' . $optionsName, $options );
     }
 
     if ( $key !== null ) {
-      return apply_filters( 'wp_parsidate_get_setting', $options[ $key ] ?? $default, $key, $default, $options,
-        $optionsName );
+      return apply_filters( 'wp_parsidate_get_setting', wp_unslash( $options[ $key ] ?? $default ), $key, $default, $options, $optionsName );
     }
 
     return apply_filters( 'wp_parsidate_get_settings', $options ?: $default, $optionsName );

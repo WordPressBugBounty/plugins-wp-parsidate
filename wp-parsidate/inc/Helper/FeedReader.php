@@ -31,7 +31,7 @@ class FeedReader {
   private array $replaceDescText = [];
 
   /**
-   * @param  array  $args  Feed arguments
+   * @param array $args Feed arguments
    */
   public function __construct( array $args ) {
     $this->args = $this->defaultArgs = array(
@@ -39,6 +39,7 @@ class FeedReader {
       'cache_key'    => '',
       'cache_time'   => DAY_IN_SECONDS,
       'items_number' => 10,
+      'timeout'      => 3,
       'fields'       => [ 'link', 'title', 'description', 'author', 'datetime' ],
     );
     $this->setArgs( $args );
@@ -47,7 +48,7 @@ class FeedReader {
   /**
    * Set feed arguments
    *
-   * @param  array  $args  Feed Arguments
+   * @param array $args Feed Arguments
    *
    * @return void
    */
@@ -57,6 +58,7 @@ class FeedReader {
     $this->args['cache_key']    = empty( $this->args['cache_key'] ) ? 'feed_' . Helper::urlToKey( $this->args['url'] ) : $this->args['cache_key'];
     $this->args['cache_time']   = is_numeric( $this->args['cache_time'] ) ? (int) $this->args['cache_time'] : DAY_IN_SECONDS;
     $this->args['items_number'] = (int) $this->args['items_number'];
+    $this->args['timeout']      = (int) $this->args['timeout'];
     $this->args['fields']       = is_array( $this->args['fields'] ) && ! empty( $this->args['fields'] ) ? $this->args['fields'] : $this->defaultArgs['fields'];
   }
 
@@ -81,7 +83,7 @@ class FeedReader {
   /**
    * Set replace text value
    *
-   * @param  array  $replaceTexts  Replace text's
+   * @param array $replaceTexts Replace text's
    *
    * @return $this
    */
@@ -94,7 +96,7 @@ class FeedReader {
   /**
    * Get HTML feed links
    *
-   * @param  array  $fields  Print fields
+   * @param array $fields Print fields
    *
    * @return array Array of HTML feed links
    */
@@ -145,7 +147,7 @@ class FeedReader {
   /**
    * Read feed
    *
-   * @param  bool  $useCache  Use Cache
+   * @param bool $useCache Use Cache
    *
    * @return FeedReader
    */
@@ -164,7 +166,15 @@ class FeedReader {
       }
     }
 
+    $timeout     = $this->args['timeout'];
+    $timeoutFunc = function ( $t ) use ( $timeout ) {
+      return $timeout;
+    };
+    add_filter( 'http_request_timeout', $timeoutFunc );
+
     $feed = fetch_feed( $this->args['url'] );
+
+    remove_filter( 'http_request_timeout', $timeoutFunc );
 
     if ( is_wp_error( $feed ) ) {
       $this->error = $feed;
@@ -235,7 +245,8 @@ class FeedReader {
     }
 
     if ( ! empty( $feedItems ) ) {
-      Cache::set( $this->args['cache_key'], $feedItems, $this->args['cache_time'] );
+      Cache::set( $this->args['cache_key'], $feedItems,
+        WP_PARSI_DEBUG_MODE ? MINUTE_IN_SECONDS * 10 : $this->args['cache_time'] );
       $this->feedItems = $feedItems;
     }
 
@@ -249,9 +260,9 @@ class FeedReader {
   /**
    * Replace text in feed fields
    *
-   * @param  array  $feedItem  Feed item
-   * @param  array  $replaceTexts  Replace text's
-   * @param  string  $field  Field key
+   * @param array $feedItem Feed item
+   * @param array $replaceTexts Replace text's
+   * @param string $field Field key
    *
    * @return array Feed item
    */

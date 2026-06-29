@@ -10,7 +10,7 @@ namespace WPParsidate\App;
 defined( 'ABSPATH' ) || exit;
 
 use WPParsidate\Core\Names;
-use WPParsidate\Helper\Assets;
+use WPParsidate\Helper\{Assets, Param};
 use WPParsidate\Settings\Settings;
 
 class AppAssets {
@@ -20,10 +20,7 @@ class AppAssets {
     add_action( 'admin_print_styles-plugin-editor.php', [ $this, 'fixCodeEditor' ] );
     add_action( 'admin_print_styles-theme-editor.php', [ $this, 'fixCodeEditor' ] );
     add_action( 'wpp_jalali_datepicker_enqueued', [ $this, 'localizeMonthsName' ] );
-
-    if ( Settings::get( 'persian_date', false ) && version_compare( get_bloginfo( 'version' ), '5.0.0', '>=' ) ) {
-      add_action( 'enqueue_block_editor_assets', [ $this, 'blockEditorAssets' ] );
-    }
+    add_action( 'enqueue_block_editor_assets', [ $this, 'blockEditorAssets' ] );
   }
 
   /**
@@ -42,6 +39,10 @@ class AppAssets {
    * @author              Alireza Dabiri Nejad / Alirdn
    */
   public function blockEditorAssets(): void {
+    if ( ! Settings::get( 'persian_date', false ) || ! version_compare( get_bloginfo( 'version' ), '5.0.0', '>=' ) ) {
+      return;
+    }
+
     $pluginVersion = Assets::getVersion();
 
     wp_enqueue_script( 'wpp_gutenberg_jalali_calendar_editor_scripts',
@@ -116,6 +117,7 @@ class AppAssets {
   }
 
   public function adminEnqueueScripts(): void {
+    global $pagenow;
     $pluginVersion = Assets::getVersion();
     $debugName     = WP_PARSI_DEBUG_MODE ? '' : '.min';
 
@@ -131,5 +133,13 @@ class AppAssets {
       'WPP_I18N',
       array( 'months' => Names::getMonths() )
     );
+
+    if ( $pagenow == 'edit.php' ) {
+      $postType = Param::get( 'post_type', 'post' );
+
+      if ( ! apply_filters( 'disable_months_dropdown', false, $postType ) ) {
+        wp_add_inline_script( WP_PARSI_KEY_SLUG . '-admin', "jQuery(document).ready(function ($) {\$('select[name=m]').hide()})" );
+      }
+    }
   }
 }

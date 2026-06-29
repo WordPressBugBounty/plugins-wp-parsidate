@@ -1,10 +1,10 @@
 === پارسی دیت – Parsi Date ===
 Contributors: lord_viper, man4toman, parselearn, yazdaniwp, saeedfard, iehsanir, wordpress-parsi
 Donate link: https://wp-parsi.com/support/
-Tags: shamsi, Persian, Jalali, date, WooCommerce, ووکامرس, تاریخ شمسی, پارسی دیت, پارسی‌دیت
+Tags: Shamsi, Persian, Jalali, WooCommerce, ووکامرس
 Requires at least: 5.3
-Tested up to: 6.9.4
-Stable tag: 6.0
+Tested up to: 7.0
+Stable tag: 6.1
 Requires PHP: 7.4
 License: GPLv3
 
@@ -17,7 +17,7 @@ ParsiDate is a powerful plugin developed by Persian contributors to enhance the 
 = Key Features: =
 
 = Date & Calendar Functionality =
-* Shamsi (Jalali) Calendar - Complete Solar Hijri calendar support
+* Shamsi (شمسی) Calendar - Complete Solar Hijri calendar support
 * Date Conversion - Automatic conversion throughout WordPress
 * Archive Widgets - Shamsi date-based post archives
 * Calendar Widget - Interactive Persian calendar widget
@@ -30,7 +30,7 @@ ParsiDate is a powerful plugin developed by Persian contributors to enhance the 
 * Content Dates - Automatic Persian dates in posts, pages, comments, and archives
 
 = Commerce & E-commerce =
-* WooCommerce Ready - Full WooCommerce compatibility with Persian dates
+* WooCommerce Ready - Full WooCommerce (ووکامرس) compatibility with Persian dates
 * Product Support - Persian dates for orders, products, and customer data
 
 = Text & Character Processing =
@@ -62,6 +62,17 @@ ParsiDate is a powerful plugin developed by Persian contributors to enhance the 
 7. WooCommerce settings
 
 == Changelog ==
+
+= 6.1 =
+* Add: Limit Login Attempts Security addon. [#WP topic](https://wordpress.org/support/topic/plugin-conflict-454/)
+* Add: Bulky (Bulk Edit Products for WooCommerce) addon. [#WP topic](https://wordpress.org/support/topic/%d9%85%d8%b4%da%a9%d9%84-%d8%a8%d8%a7-%d8%a7%d9%81%d8%b2%d9%88%d9%86%d9%87-bulky-bulk-edit-products-for-woocommerce/)
+* Add: Schema Pro addon. [#issue](https://github.com/wordpress-parsi/wp-parsidate/issues/291)
+* Add: Dual date feature. [#PR](https://github.com/wordpress-parsi/wp-parsidate/pull/304)
+* Fix: Implicitly nullable parameter declarations deprecated in PHP 8.4. [#PR](https://github.com/wordpress-parsi/wp-parsidate/pull/307)
+* Fix: Resolve decimal number conversion issue in Persian text. [#PR](https://github.com/wordpress-parsi/wp-parsidate/pull/303)
+* Fix: Validate phone number in block type checkout (WooCommerce V11.0+). [#PR](https://github.com/woocommerce/woocommerce/pull/65817)
+* Fix: ACF repeatable date field save error
+* Fixed some errors
 
 = 6.0 =
 * We have major update for code and UI of Parsi Date plugin

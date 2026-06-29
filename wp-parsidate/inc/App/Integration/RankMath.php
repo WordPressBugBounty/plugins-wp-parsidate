@@ -12,7 +12,8 @@ namespace WPParsidate\App\Integration;
 defined( 'ABSPATH' ) || exit;
 
 use WPParsidate\Addons\Addon;
-use WPParsidate\Helper\Number;
+use WPParsidate\Core\WPP_ParsiDate;
+use WPParsidate\Helper\{Number, Date};
 
 class RankMath extends Addon {
   public string $addonID = 'rank_math';
@@ -84,9 +85,35 @@ class RankMath extends Addon {
           }
         }
       }
+
+      // Fix datePublished/dateModified
+      if ( isset( $item['datePublished'] ) ) {
+        $data[ $key ]['datePublished'] = $this->fixDate( $item['datePublished'] );
+      }
+      if ( isset( $item['dateModified'] ) ) {
+        $data[ $key ]['dateModified'] = $this->fixDate( $item['dateModified'] );
+      }
     }
 
     return $data;
+  }
+
+  private function fixDate( $date ): string {
+    $parsiDate = WPP_ParsiDate::getInstance();
+    $datePart  = explode( ' ', str_replace( '\\', ' ', Number::toEnglish( $date ) ) );
+    $isDate    = Date::isDateString( $datePart[0], 'Y-m-d' );
+
+    if ( $isDate['type'] === 'jalali' ) {
+      $timezoneOffset = Date::getLocalOffset();
+      [ $jYear, $jMonth, $jDay ] = explode( '-', $datePart[0] );
+      $gregDate    = $parsiDate->persian_to_gregorian( $jYear, $jMonth, $jDay );
+      $gregDate[1] = str_pad( $gregDate[1], 2, '0', STR_PAD_LEFT );
+      $gregDate[2] = str_pad( $gregDate[2], 2, '0', STR_PAD_LEFT );
+
+      return "$gregDate[0]-$gregDate[1]-$gregDate[2]T$datePart[1]$timezoneOffset";
+    }
+
+    return $date;
   }
 
   /* @hook */
@@ -140,6 +167,7 @@ class RankMath extends Addon {
       'desc'             => esc_html__( 'ParsiDate integration for Rank Math', 'wp-parsidate' ),
       'force_enable'     => false,
       'icon'             => $svg,
+      'image_link'       => 'https://wordpress.org/plugins/seo-by-rank-math/',
       'tags'             => [ esc_html__( 'SEO', 'wp-parsidate' ) ],
       'cat'              => 'seo',
       'settings_key'     => $this->addonID,
