@@ -228,7 +228,7 @@ class WPP_ParsiDate {
    *
    * @return array
    */
-  function gregorian_to_persian( $gy, $gm, $gd ) {
+  public function gregorian_to_persian( $gy, $gm, $gd ): array {
     $dayOfYear = $this->g_days_sum_month[ (int) $gm ] + $gd;
 
     if ( $this->IsLeapYear( $gy ) and $gm > 2 ) {
@@ -319,6 +319,10 @@ class WPP_ParsiDate {
     preg_match_all( '!\d+!', $persianDate, $matches );
 
     $matches = $matches[0];
+
+    if ( count( $matches ) < 3 ) {
+      return $persianDate;
+    }
 
     [ $year, $mon, $day ] = $this->persian_to_gregorian(
       $matches[0],

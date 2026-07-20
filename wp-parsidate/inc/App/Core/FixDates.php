@@ -7,10 +7,10 @@
 
 namespace WPParsidate\App\Core;
 
-use WPParsidate\App\Integration\HookDeactivator;
+use DateTimeZone;
+use WPParsidate\App\Tools\HookDeactivator;
 use WPParsidate\Core\Names;
-use WPParsidate\Helper\Number;
-use WPParsidate\Helper\WordPress;
+use WPParsidate\Helper\{Date, Number, WordPress};
 use WPParsidate\Settings\Settings;
 
 class FixDates {
@@ -30,11 +30,54 @@ class FixDates {
       add_filter( 'media_view_settings', [ $this, 'fixMediaViewSettings' ], 10, 2 );
 
       add_filter( 'date_i18n', [ $this, 'fixDateI18n' ], 10, 4 );
+      add_filter( 'wp_date', [ $this, 'fixWpDate' ], 10, 4 );
 
-      if ( ! WordPress::isSitemap() ) {
-        add_filter( 'wp_date', [ $this, 'fixDateI18n' ], 10, 4 );
-      }
+      add_filter( 'wp_parsidate_hook_deactivator_raw_list', [ $this, 'addDateHooksToDeactivator' ] );
     }
+  }
+
+  public function addDateHooksToDeactivator( $rawList ): string {
+    $rawList .= "\nwp_date,date_i18n";
+
+    return $rawList;
+  }
+
+  /**
+   * Fixes wp_date date formatting and convert them to Jalali
+   *
+   * @param string $date Formatted date string.
+   * @param string $format Format to display the date.
+   * @param int $timestamp Unix timestamp.
+   * @param \DateTimeZone|string|null $timezone Timezone.
+   *
+   */
+  public function fixWpDate( $date, $format, $timestamp, $timezone ): string {
+    if (
+      WordPress::isSitemap() ||
+      ( function_exists( 'pll_current_language' ) && ( pll_current_language() !== false && pll_current_language() !== "fa" ) ) ||
+      HookDeactivator::checkDisable()
+    ) {
+      return $date;
+    }
+
+    $adjustedTimestamp = $timestamp;
+
+    try {
+      $timezone = $timezone instanceof DateTimeZone ? $timezone : new DateTimeZone( $timezone ?: wp_timezone() );
+
+      // wp_date() passes a pure UTC Unix timestamp
+      // We need to add the timezone offset to convert to local time for date formatting
+      $offset = Date::getTimeZoneOffset( $timezone );
+
+      if ( ! empty( $timestamp ) && $offset !== 0 ) {
+        $tzOffset          = (int) ( $offset * HOUR_IN_SECONDS );
+        $adjustedTimestamp = $timestamp + $tzOffset;
+      }
+    } catch ( \DateInvalidTimeZoneException $e ) {
+      // If timezone is invalid, use original timestamp
+    }
+
+    return $this->formatDate( $format, $adjustedTimestamp, $date );
   }
 
   /**
@@ -50,11 +93,10 @@ class FixDates {
    * @return string Formatted time
    */
   public function fixDateI18n( $date, $format, $timestamp, $gmt ): string {
-    if ( ( function_exists( 'pll_current_language' ) && ( pll_current_language() !== false && pll_current_language() !== "fa" ) ) ) {
-      return $date;
-    }
-
-    if ( HookDeactivator::checkDisable() ) {
+    if (
+      ( function_exists( 'pll_current_language' ) && ( pll_current_language() !== false && pll_current_language() !== "fa" ) ) ||
+      HookDeactivator::checkDisable()
+    ) {
       return $date;
     }
 
