@@ -146,7 +146,7 @@ class FixDates {
       $format = (string) get_option( 'date_format' );
     }
     if ( 'c' === $format || HookDeactivator::checkDisable() ) {
-      return date( $format, strtotime( $comment->comment_date ) );
+      return gmdate( $format, strtotime( $comment->comment_date ) );
     }
 
     return $this->formatDate( $format, $comment->comment_date, $comment_date );
@@ -171,7 +171,7 @@ class FixDates {
       $format = (string) get_option( 'time_format' );
     }
     if ( HookDeactivator::checkDisable() ) {
-      return date( $format, strtotime( $comment->comment_date ) );
+      return gmdate( $format, strtotime( $comment->comment_date ) );
     }
 
     return $this->formatDate( $format, $comment->comment_date, $time );
@@ -193,7 +193,7 @@ class FixDates {
     }
 
     if ( 'c' === $format ) {
-      return date( $format, strtotime( $post->post_modified ) );
+      return gmdate( $format, strtotime( $post->post_modified ) );
     }
 
     return $time;
@@ -223,7 +223,7 @@ class FixDates {
     }
 
     if ( HookDeactivator::checkDisable() ) {
-      return date( $format, strtotime( $post->post_date ) );
+      return gmdate( $format, strtotime( $post->post_date ) );
     }
 
     return $this->formatDate( $format, $post->post_date, $time );
@@ -256,10 +256,10 @@ class FixDates {
     }
 
     if ( 'c' === $format || HookDeactivator::checkDisable() ) {
-      return date( $format, strtotime( $post->post_date ) );
+      return gmdate( $format, strtotime( $post->post_date ) );
     }
 
-    return $this->formatDate( $format, date( 'Y-m-d H:i:s', strtotime( $post->post_date ) ), $time );
+    return $this->formatDate( $format, gmdate( 'Y-m-d H:i:s', strtotime( $post->post_date ) ), $time );
   }
 
   /**
@@ -301,6 +301,7 @@ class FixDates {
       return $jalaliDate;
     }
 
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Legacy public hook name, kept for backward compatibility.
     $separator = apply_filters( 'wp_parsidate_dual_date_separator', ' - ', $format, $dateTime );
 
     return $jalaliDate . $separator . $gregorianDate;
@@ -316,26 +317,31 @@ class FixDates {
    * @return bool True if the format contains human-readable date components, false otherwise.
    */
   private function isDualDateFormat( string $format ): bool {
-    $machineFormats = array_filter( [
-      'c',
-      'r',
-      'U',
-      'u',
-      'timestamp',
-      DATE_ATOM,
-      DATE_COOKIE,
-      DATE_ISO8601,
-      DATE_RFC822,
-      DATE_RFC850,
-      DATE_RFC1036,
-      DATE_RFC1123,
-      DATE_RFC2822,
-      DATE_RFC3339,
-      defined( 'DATE_RFC3339_EXTENDED' ) ? DATE_RFC3339_EXTENDED : null,
-      defined( 'DATE_RFC7231' ) ? DATE_RFC7231 : null,
-      DATE_RSS,
-      DATE_W3C,
-    ] );
+    // Built once per request: this filter runs on every rendered date.
+    static $machineFormats = null;
+
+    if ( null === $machineFormats ) {
+      $machineFormats = array_filter( [
+        'c',
+        'r',
+        'U',
+        'u',
+        'timestamp',
+        DATE_ATOM,
+        DATE_COOKIE,
+        DATE_ISO8601,
+        DATE_RFC822,
+        DATE_RFC850,
+        DATE_RFC1036,
+        DATE_RFC1123,
+        DATE_RFC2822,
+        DATE_RFC3339,
+        defined( 'DATE_RFC3339_EXTENDED' ) ? DATE_RFC3339_EXTENDED : null,
+        defined( 'DATE_RFC7231' ) ? DATE_RFC7231 : null,
+        DATE_RSS,
+        DATE_W3C,
+      ] );
+    }
 
     if ( in_array( $format, $machineFormats, true ) ) {
       return false;
@@ -361,7 +367,7 @@ class FixDates {
     if ( is_null( $timestamp ) ) {
       $date = $fallbackGregorianDate;
     } else {
-      $date = date( $format, $timestamp );
+      $date = gmdate( $format, $timestamp );
       $date = $this->translateGregorianDateNames( $date, $timestamp );
     }
 
@@ -369,6 +375,7 @@ class FixDates {
       $date = Number::toPersian( $date );
     }
 
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Legacy public hook name, kept for backward compatibility.
     return apply_filters( 'wp_parsidate_dual_date_gregorian', $date, $format, $dateTime, $fallbackGregorianDate );
   }
 
@@ -386,42 +393,51 @@ class FixDates {
     $weekDays    = Names::getGregorianWeekDays();
     $shortDays   = Names::getGregorianWeekDays( null, true );
 
-    $englishMonths      = array(
-      '',
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December'
-    );
-    $englishShortMonths = array(
-      '',
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
-    );
-    $englishWeekDays    = array( 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday' );
-    $englishShortDays   = array( 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat' );
+    // English names never change at runtime: build once per request instead
+    // of on every rendered date.
+    static $englishMonths = null;
+    static $englishShortMonths = null;
+    static $englishWeekDays = null;
+    static $englishShortDays = null;
+
+    if ( null === $englishMonths ) {
+      $englishMonths      = array(
+        '',
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December'
+      );
+      $englishShortMonths = array(
+        '',
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec'
+      );
+      $englishWeekDays    = array( 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday' );
+      $englishShortDays   = array( 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat' );
+    }
     $replacements       = [];
 
-    $month = (int) date( 'n', $timestamp );
-    $day   = (int) date( 'w', $timestamp );
+    $month = (int) gmdate( 'n', $timestamp );
+    $day   = (int) gmdate( 'w', $timestamp );
 
     if ( isset( $months[ $month ] ) ) {
       $replacements[ $englishMonths[ $month ] ] = $months[ $month ];

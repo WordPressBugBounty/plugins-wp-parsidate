@@ -67,18 +67,26 @@ class WooCommerceCitySelect {
   public function load_country_cities() {
     global $cities;
 
+    // Ensure the global city map is an array before loading country files.
+    if ( ! is_array( $cities ) ) {
+      // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- Global shared with the WC City Select cities format.
+      $cities = array();
+    }
+
     // Load only the city files the shop owner wants/needs.
     $allowed = array_merge( WC()->countries->get_allowed_countries(), WC()->countries->get_shipping_countries() );
 
     if ( $allowed ) {
       foreach ( $allowed as $code => $country ) {
-        if ( ! isset( $cities[ $code ] ) && file_exists( $this->get_plugin_path() . '/wc-cities/cities/' . $code . '.php' ) ) {
-          include( $this->get_plugin_path() . '/wc-cities/cities/' . $code . '.php' );
+        if ( ! isset( $cities[ $code ] ) && file_exists( $this->get_plugin_path() . '/cities/' . $code . '.php' ) ) {
+          include( $this->get_plugin_path() . '/cities/' . $code . '.php' );
         }
       }
     }
 
-    $this->cities = apply_filters( 'wc_city_select_cities', $cities );
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Hook of the WC City Select format, kept for compatibility.
+    $filtered_cities = apply_filters( 'wc_city_select_cities', $cities );
+    $this->cities = is_array( $filtered_cities ) ? $filtered_cities : array();
   }
 
   private function add_to_dropdown( $item ) {

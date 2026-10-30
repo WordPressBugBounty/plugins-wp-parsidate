@@ -1,7 +1,5 @@
 <?php
 
-use WPParsidate\Helper\Assets;
-
 defined( 'ABSPATH' ) || exit( 'No direct script access allowed' );
 
 /**
@@ -12,7 +10,43 @@ defined( 'ABSPATH' ) || exit( 'No direct script access allowed' );
  *
  * @since 4.0.0
  */
+// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedClassFound -- Legacy class name, kept for backward compatibility.
 class WPP_acf_field_wpp_timepicker extends acf_field {
+
+  /**
+   * Field type name
+   *
+   * @var string
+   */
+  public $name = '';
+
+  /**
+   * Field type label
+   *
+   * @var string
+   */
+  public $label = '';
+
+  /**
+   * Field type category
+   *
+   * @var string
+   */
+  public $category = '';
+
+  /**
+   * Default field settings
+   *
+   * @var array
+   */
+  public $defaults = array();
+
+  /**
+   * Translated strings
+   *
+   * @var array
+   */
+  public $l10n = array();
 
   /**
    * Hooks required tags
@@ -95,6 +129,7 @@ class WPP_acf_field_wpp_timepicker extends acf_field {
    * @since           4.0.0
    */
   function input_admin_enqueue_scripts() {
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Legacy public hook name, kept for backward compatibility.
     do_action( 'wp_parsidate_jalali_datepicker_enqueue', 'acf-5' );
 
     // Remove jquery time picker to avoid conflict with woocommerce
@@ -113,6 +148,7 @@ class WPP_acf_field_wpp_timepicker extends acf_field {
    * @since           4.0.0
    */
   function load_value( $value, $post_id, $field ) {
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Legacy public hook name, kept for backward compatibility.
     return apply_filters( 'wpp_acf_after_load_time', $value );
   }
 
@@ -127,6 +163,7 @@ class WPP_acf_field_wpp_timepicker extends acf_field {
    * @since           4.0.0
    */
   function update_value( $value, $post_id, $field ) {
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Legacy public hook name, kept for backward compatibility.
     return apply_filters( 'wpp_acf_before_update_time', $value );
   }
 
@@ -145,6 +182,7 @@ class WPP_acf_field_wpp_timepicker extends acf_field {
       return $value;
     }
 
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Legacy public hook name, kept for backward compatibility.
     return apply_filters( 'wpp_acf_before_time_render', $value );
   }
 
@@ -163,6 +201,7 @@ class WPP_acf_field_wpp_timepicker extends acf_field {
    *
    */
   function validate_value( $valid, $value, $field, $input ) {
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Legacy public hook name, kept for backward compatibility.
     return apply_filters( 'wpp_acf_validate_time_value', $valid, $value, $field, $input );
   }
 
@@ -175,6 +214,7 @@ class WPP_acf_field_wpp_timepicker extends acf_field {
    * @since           4.0.0
    */
   function load_field( $field ) {
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Legacy public hook name, kept for backward compatibility.
     return apply_filters( 'wpp_acf_after_load_time_field', $field );
   }
 
@@ -187,6 +227,7 @@ class WPP_acf_field_wpp_timepicker extends acf_field {
    * @since           4.0.0
    */
   function update_field( $field ) {
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Legacy public hook name, kept for backward compatibility.
     return apply_filters( 'wpp_acf_before_save_time_field', $field );
   }
 }

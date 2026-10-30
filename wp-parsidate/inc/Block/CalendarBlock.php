@@ -38,18 +38,38 @@ class CalendarBlock extends Block {
     $title    = $attributes['title'] ?? '';
     $postType = $attributes['postType'] ?? 'post';
     $theme    = $attributes['theme'] ?? 'simple';
-    $blockId  = 'wp-parsidate-calendar-block-' . md5( $postType . $theme );
+
+    // Block attributes are saved by whoever can edit the post, so they must not
+    // be trusted: only a registered post type and one of the known themes are
+    // accepted, and anything else falls back to the default.
+    $title    = is_string( $title ) ? $title : '';
+    $postType = is_string( $postType ) ? sanitize_key( $postType ) : 'post';
+
+    if ( ! post_type_exists( $postType ) ) {
+      $postType = 'post';
+    }
+
+    $allowedThemes = array( 'none', 'simple', 'light', 'dark' );
+    $theme         = is_string( $theme ) ? sanitize_key( $theme ) : 'simple';
+
+    if ( ! in_array( $theme, $allowedThemes, true ) ) {
+      $theme = 'simple';
+    }
+
+    $blockId = 'wp-parsidate-calendar-block-' . md5( $postType . $theme );
 
     ob_start();
 
-    echo '<div ' . get_block_wrapper_attributes() . '>';
+    echo '<div ' . wp_kses_data( function_exists( 'get_block_wrapper_attributes' ) ? get_block_wrapper_attributes() : '' ) . '>';
 
     if ( ! empty( $title ) ) {
       echo '<h2 class="wp-block-wp-parsidate-calendar__title">' . esc_html( $title ) . '</h2>';
     }
 
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Legacy public hook name, kept for backward compatibility.
     do_action( 'wp_parsidate_calendar_block_start', $title, $postType, $theme, $blockId );
     Calendar::printCalendar( $postType, $theme );
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Legacy public hook name, kept for backward compatibility.
     do_action( 'wp_parsidate_calendar_block_end', $title, $postType, $theme, $blockId );
 
     echo '</div>';

@@ -30,7 +30,7 @@ class Plugin {
    * @return array Modified request arguments.
    */
   public function limitWpParsiTimeout( array $args, string $url ): array {
-    if ( str_contains( $url, 'wp-parsi.com' ) ) {
+    if ( false !== strpos( $url, 'wp-parsi.com' ) ) {
       $args['timeout'] = 6;
     }
 
@@ -45,7 +45,7 @@ class Plugin {
    * Uses determine_locale() instead of hardcoding 'fa_IR' for multi-locale flexibility.
    */
   public function loadTextDomain(): void {
-    if ( __( 'WordPress', 'wp-parsidate' ) !== 'وردپرس' || Settings::get( 'local_text_domain', false ) ) {
+    if ( ! is_textdomain_loaded( 'wp-parsidate' ) || Settings::get( 'local_text_domain', false ) ) {
       load_textdomain(
         'wp-parsidate',
         WP_PARSI_DIR . '/languages/wp-parsidate-' . determine_locale() . '.mo'
@@ -65,6 +65,7 @@ class Plugin {
       $notices[] = array(
         'id'           => 'persian_date_activation',
         'message'      => sprintf(
+          /* translators: %s: URL of the plugin settings page. */
           __( 'ParsiDate activated, you may need to configure it to work properly. <a href="%s">Go to configuration page</a>', 'wp-parsidate' ),
           esc_url_raw( AdminPages::link( [ 'tab' => 'core' ] ) )
         ),

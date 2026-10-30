@@ -12,9 +12,9 @@ defined( 'ABSPATH' ) || exit;
 
 use WPParsidate\Addons\Addon;
 use WPParsidate\App\Integration\WooCommerce\{WcGateways, WooCommerceCitySelect};
-use WPParsidate\Helper\{Assets, Date, Debug, Number, NumberConverter, Templates};
+use WPParsidate\Helper\{Assets, Date, Debug, Number, NumberConverter, Param, Templates};
 use WPParsidate\Admin\AdminPages;
-use WPParsidate\Core\Names;
+use WPParsidate\Core\{Names, WPP_ParsiDate};
 use WPParsidate\Settings\Settings;
 
 class WooCommerce extends Addon {
@@ -33,12 +33,20 @@ class WooCommerce extends Addon {
     add_filter( 'wp_parsidate_' . $this->addonID . '_tab_display_notice', '__return_false' );
     add_filter( 'wp_parsidate_' . $this->addonID . '_tab_content_display_notice', '__return_true' );
 
+    if ( ! class_exists( 'WooCommerce', false ) || ! function_exists( 'is_woocommerce' ) ) {
+      return;
+    }
+
     add_action( 'before_woocommerce_init', [ $this, 'beforeWooCommerceInit' ] );
 
     WcGateways::getInstance();
   }
 
   public function initAction(): void {
+    if ( ! class_exists( 'WooCommerce', false ) || ! function_exists( 'is_woocommerce' ) ) {
+      return;
+    }
+
     add_filter( 'woocommerce_reports_get_order_report_query', [ $this, 'fixOrderReportQueryDate' ] );
 
     if ( get_locale() === 'fa_IR' ) {
@@ -59,6 +67,11 @@ class WooCommerce extends Addon {
 
         // Jalali datepicker
         add_action( 'admin_enqueue_scripts', [ $this, 'adminEnqueueJalaliScripts' ] );
+        add_filter( 'woocommerce_date_input_html_pattern', [ $this, 'filterDateInputHtmlPattern' ] );
+
+        // The order date/time fields are form values, so their digits are kept latin
+        // in the HTML the server sends instead of being corrected afterwards by JS.
+        add_filter( 'date_i18n', [ $this, 'fixOrderDateDigits' ], 999, 2 );
 
         // Convert order_date using js
         add_action( 'woocommerce_process_shop_order_meta', [ $this, 'changeOrderDateOnSave' ], 0 );
@@ -114,6 +127,7 @@ class WooCommerce extends Addon {
     $notices[] = array(
       'id'          => 'wc_analytics_shamsi_date',
       'message'     => sprintf(
+        /* translators: %s: URL of the plugin settings page. */
         __( 'If you want the date for this section to be Shamsi, enable it in the settings. <a href="%s">Go to configuration page</a>', 'wp-parsidate' ),
         esc_url_raw( AdminPages::link( [ 'tab' => $this->addonID ] ) )
       ),
@@ -187,6 +201,7 @@ class WooCommerce extends Addon {
       return; // Iran cities not available
     }
 
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Legacy public hook name, kept for backward compatibility.
     $all = apply_filters( 'wp_parsidate_wc_checkout_city_select_cities', $cities );
     $ir  = ( isset( $all['IR'] ) && is_array( $all['IR'] ) ) ? $all['IR'] : array();
 
@@ -264,6 +279,7 @@ class WooCommerce extends Addon {
     }
 
     return \WPParsidate\Helper\WooCommerce::isPostalCode( $postcode,
+      // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Legacy public hook name, kept for backward compatibility.
       apply_filters( 'wp_parsidate_validate_postal_code_checksum', false ) );
   }
 
@@ -306,6 +322,7 @@ class WooCommerce extends Addon {
      *
      * @var array $persian_fields
      */
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Legacy public hook name, kept for backward compatibility.
     $supported_persian_fields = apply_filters( "wpp_woocommerce_checkout_persian_fields", $persian_fields );
 
     if ( ! is_array( $supported_persian_fields ) ) {
@@ -318,6 +335,7 @@ class WooCommerce extends Addon {
       }
     }
 
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Legacy public hook name, kept for backward compatibility.
     $modified_data = apply_filters( "wpp_woocommerce_checkout_modified_persian_fields", $data );
 
     return is_array( $modified_data ) ? $modified_data : $data;
@@ -356,6 +374,7 @@ class WooCommerce extends Addon {
       '٠'  => '۰',
     );
 
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Legacy public hook name, kept for backward compatibility.
     $characters = apply_filters( "wpp_arabic_persian_characters_list", $characters );
 
     return str_replace( array_keys( $characters ), array_values( $characters ), $string );
@@ -367,6 +386,18 @@ class WooCommerce extends Addon {
    * @since 4.1.0
    */
   public function acceptPersianNumbersInCheckout(): void {
+    // WooCommerce has already verified this nonce (same fields as WC_Checkout::process_checkout()) before firing woocommerce_checkout_process.
+    $nonce = '';
+    if ( isset( $_REQUEST['woocommerce-process-checkout-nonce'] ) ) {
+      $nonce = sanitize_text_field( wp_unslash( $_REQUEST['woocommerce-process-checkout-nonce'] ) );
+    } elseif ( isset( $_REQUEST['_wpnonce'] ) ) {
+      $nonce = sanitize_text_field( wp_unslash( $_REQUEST['_wpnonce'] ) );
+    }
+
+    if ( ! wp_verify_nonce( $nonce, 'woocommerce-process_checkout' ) ) {
+      return;
+    }
+
     if ( $this->getSetting( 'fix_persian_postcode', false ) ) {
       if ( isset( $_POST['billing_postcode'] ) ) {
         $_POST['billing_postcode'] = Number::toEnglish( wc_get_post_data_by_key( 'billing_postcode' ) );
@@ -424,9 +455,11 @@ class WooCommerce extends Addon {
    * @since           4.0.0
    */
   public function changeReportDates(): void {
+    // phpcs:disable WordPress.Security.NonceVerification.Recommended -- Read-only report filter values of the WooCommerce reports screen, which has no nonce.
     $page      = sanitize_text_field( wp_unslash( $_GET['page'] ?? '' ) );
     $startDate = sanitize_text_field( wp_unslash( $_GET['start_date'] ?? '' ) );
     $endDate   = sanitize_text_field( wp_unslash( $_GET['end_date'] ?? '' ) );
+    // phpcs:enable WordPress.Security.NonceVerification.Recommended
 
     if ( ! empty( $page ) && 'wc-reports' === $page ) {
       if ( ! empty( $startDate ) ) {
@@ -440,42 +473,71 @@ class WooCommerce extends Addon {
   }
 
   /**
-   * Changes order_date field in "Edit order" screen using JS
+   * Keeps the digits of the WooCommerce order date/time fields latin
+   *
+   * WooCommerce builds order_date, order_date_hour, order_date_minute and
+   * order_date_second with date_i18n(), so the date filter turns their digits into
+   * Persian ones. The browser discards such a value from the number inputs and
+   * WooCommerce then reads an empty field back on save, which zeroes the order time,
+   * and an empty order_date makes it store the current time instead. The fields are
+   * printed with latin digits, so the served HTML needs no JavaScript correction.
+   *
+   * @param string $date   Formatted date string.
+   * @param string $format Format the date was built with.
+   *
+   * @return string
+   * @since 6.4.2
+   */
+  public function fixOrderDateDigits( string $date, string $format ): string {
+    // Only the four formats WooCommerce renders those fields with, and only on their
+    // screen, so no other date on the site loses its Persian digits.
+    if ( ! in_array( $format, [ 'Y-m-d', 'H', 'i', 's' ], true ) || ! $this->isOrderEditScreen() ) {
+      return $date;
+    }
+
+    return Number::toEnglish( $date );
+  }
+
+  /**
+   * Whether the WooCommerce order edit screen is being rendered
+   *
+   * The HPOS list and edit screens share an id, so the edit action is required.
+   *
+   * @return bool
+   * @since 6.4.2
+   */
+  private function isOrderEditScreen(): bool {
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only screen detection.
+    if ( ! is_admin() || sanitize_key( wp_unslash( $_GET['action'] ?? '' ) ) !== 'edit' ) {
+      return false;
+    }
+
+    $screen = get_current_screen();
+
+    return $screen instanceof \WP_Screen && in_array( $screen->id, [ 'shop_order', 'woocommerce_page_wc-orders' ], true );
+  }
+
+  /**
+   * Fills the report range and product sale date fields with their Jalali values
+   *
+   * The order screen is not handled here: its date/time fields are already printed
+   * with latin digits by fixOrderDateDigits().
    *
    * @since 4.0.0
    */
   public function fixShowCreatedOrderDate(): void {
     $current_screen = $this->getCurrentScreen();
 
-    if ( 'edit_order' === $current_screen ) {
-      if ( ! \WPParsidate\Helper\WooCommerce::hposEnabled() ) {
-        global $post;
-
-        if ( ! $post ) {
-          $jalali_date = parsidate( 'Y-m-d', date( 'Y-m-d' ), 'eng' );
-        } else {
-          $jalali_date = parsidate( 'Y-m-d', date( 'Y-m-d', strtotime( $post->post_date ) ), 'eng' );
-        }
-      } else {
-        global $theorder;
-
-        if ( ! $theorder ) {
-          $jalali_date = parsidate( 'Y-m-d', date( 'Y-m-d' ), 'eng' );
-        } else {
-          $jalali_date = parsidate( 'Y-m-d', ! is_null( $theorder->get_date_created() ) ? $theorder->get_date_created()->getOffsetTimestamp() : '', 'eng' );
-        }
-      }
-
-      wp_add_inline_script( WP_PARSI_KEY . '_datepicker', 'jQuery("input[name=order_date]").val("' . $jalali_date . '")' );
-
-    } elseif ( 'legacy_report' === $current_screen ) {
+    if ( 'legacy_report' === $current_screen ) {
+      // phpcs:disable WordPress.Security.NonceVerification.Recommended -- Read-only report filter values of the WooCommerce reports screen, which has no nonce.
       $startDate = sanitize_text_field( wp_unslash( $_GET['start_date'] ?? '' ) );
       $endDate   = sanitize_text_field( wp_unslash( $_GET['end_date'] ?? '' ) );
+      // phpcs:enable WordPress.Security.NonceVerification.Recommended
 
       $jalali_start_date = ! empty( $startDate ) ? parsidate( 'Y-m-d',
-        date( 'Y-m-d', strtotime( $startDate ) ), 'eng' ) : '';
+        gmdate( 'Y-m-d', strtotime( $startDate ) ), 'eng' ) : '';
       $jalali_end_date   = ! empty( $endDate ) ? parsidate( 'Y-m-d',
-        date( 'Y-m-d', strtotime( $endDate ) ), 'eng' ) : '';
+        gmdate( 'Y-m-d', strtotime( $endDate ) ), 'eng' ) : '';
 
       wp_add_inline_script( WP_PARSI_KEY . '_datepicker', 'jQuery("input[name=start_date]").val("' . $jalali_start_date . '");jQuery("input[name=end_date]").val("' . $jalali_end_date . '");' );
 
@@ -584,27 +646,21 @@ class WooCommerce extends Addon {
    * @since           4.0.0
    */
   public function changeOrderDateAndCouponExpiresMeta( $metadata, $object_id, $meta_key, $single ) {
-    global $wpdb;
+    if ( 'date_expires' !== $meta_key ) {
+      return $metadata;
+    }
 
-    $post_type  = get_post_type( $object_id );
-    $editAction = sanitize_text_field( wp_unslash( $_GET['action'] ?? '' ) ) === 'edit';
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only screen detection.
+    $editAction = sanitize_key( wp_unslash( $_GET['action'] ?? '' ) ) === 'edit';
 
-    if ( $editAction && 'shop_coupon' === $post_type && 'date_expires' === $meta_key ) {
-      $metadata = $wpdb->get_var(
-        $wpdb->prepare(
-          "
-						SELECT meta_value
-						From $wpdb->postmeta
-						WHERE post_id = %d
-							AND meta_key = %s
-					",
-          $object_id,
-          $meta_key
-        )
-      );
+    if ( $editAction && 'shop_coupon' === get_post_type( $object_id ) ) {
+      // Read the raw value through the meta API without running this filter again.
+      remove_filter( 'get_post_metadata', [ $this, 'changeOrderDateAndCouponExpiresMeta' ], 10 );
+      $value = get_post_meta( $object_id, $meta_key, true );
+      add_filter( 'get_post_metadata', [ $this, 'changeOrderDateAndCouponExpiresMeta' ], 10, 4 );
 
-      if ( ! empty( $metadata ) ) {
-        return parsidate( 'Y-m-d', $metadata, 'eng' );
+      if ( ! empty( $value ) ) {
+        return parsidate( 'Y-m-d', $value, 'eng' );
       }
     }
 
@@ -633,11 +689,16 @@ class WooCommerce extends Addon {
    * @since           4.0.0
    */
   public function validateVariableProductDates( $product_id ): void {
+    // WooCommerce has already verified this nonce in its save variations ajax request.
+    if ( ! check_ajax_referer( 'save-variations', 'security', false ) ) {
+      return;
+    }
+
     if ( ! isset( $_POST['variable_post_id'] ) ) {
       return;
     }
 
-    $max_loop   = max( array_keys( wp_unslash( $_POST['variable_post_id'] ) ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+    $max_loop   = max( array_map( 'absint', array_keys( (array) wp_unslash( $_POST['variable_post_id'] ) ) ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Only the array keys are used, cast to integers.
     $parent     = wc_get_product( $product_id );
     $data_store = $parent->get_data_store();
 
@@ -688,6 +749,11 @@ class WooCommerce extends Addon {
    * @since           4.0.0
    */
   public function validateNonVariableProductDates( $product_id ) {
+    // WooCommerce has already verified this nonce before firing woocommerce_process_product_meta.
+    if ( ! isset( $_POST['woocommerce_meta_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['woocommerce_meta_nonce'] ) ), 'woocommerce_save_data' ) ) {
+      return;
+    }
+
     $props = array();
 
     if ( isset( $_POST['_sale_price_dates_from'] ) ) {
@@ -696,7 +762,7 @@ class WooCommerce extends Addon {
       $time_on_sale_from  = ! empty( $salePriceTimesFrom ) && Date::isTimeString( $salePriceTimesFrom ) ? Date::isTimeString( $salePriceTimesFrom ) : '00:00:00';
 
       if ( ! empty( $date_on_sale_from ) ) {
-        $props['date_on_sale_from'] = date( 'Y-m-d ' . $time_on_sale_from,
+        $props['date_on_sale_from'] = gmdate( 'Y-m-d ' . $time_on_sale_from,
           strtotime( gregdate( 'Y-m-d', $date_on_sale_from ) ) );
       }
     }
@@ -707,7 +773,7 @@ class WooCommerce extends Addon {
       $time_on_sale_to  = ! empty( $salePriceTimesTo ) && Date::isTimeString( $salePriceTimesTo ) ? Date::isTimeString( $salePriceTimesTo ) : '23:59:59';
 
       if ( ! empty( $date_on_sale_to ) ) {
-        $props['date_on_sale_to'] = date( 'Y-m-d ' . $time_on_sale_to, strtotime( gregdate( 'Y-m-d', $date_on_sale_to ) ) );
+        $props['date_on_sale_to'] = gmdate( 'Y-m-d ' . $time_on_sale_to, strtotime( gregdate( 'Y-m-d', $date_on_sale_to ) ) );
       }
     }
 
@@ -730,11 +796,12 @@ class WooCommerce extends Addon {
    * @since 5.0.2
    */
   public function changeOrderDateOnSave( $order_id ): void {
-    $orderDate = Number::toEnglish( wc_get_post_data_by_key( 'order_date' ) );
+    // Download expiry dates are posted with the same form but saved by another handler,
+    // so they have to be converted even when the order date itself is left alone.
+    $this->fixPostedDownloadExpires();
 
-    if ( empty( $orderDate ) ) {
-      return;
-    }
+    $postedDate = wc_get_post_data_by_key( 'order_date' );
+    $orderDate  = is_string( $postedDate ) ? Number::toEnglish( trim( $postedDate ) ) : '';
 
     $order = wc_get_order( $order_id );
 
@@ -742,34 +809,185 @@ class WooCommerce extends Addon {
       return;
     }
 
-    $orderDateHour      = (int) Number::toEnglish( wc_get_post_data_by_key( 'order_date_hour' ) );
-    $orderDateMinute    = (int) Number::toEnglish( wc_get_post_data_by_key( 'order_date_minute' ) );
-    $orderDateSecond    = (int) Number::toEnglish( wc_get_post_data_by_key( 'order_date_second' ) );
-    $hour               = str_pad( $orderDateHour, 2, '0', STR_PAD_LEFT );
-    $minute             = str_pad( $orderDateMinute, 2, '0', STR_PAD_LEFT );
-    $second             = str_pad( $orderDateSecond, 2, '0', STR_PAD_LEFT );
-    $orderDateTime      = "$orderDate $hour:$minute:$second";
-    $fixedDateTimestamp = gregdate( 'U', $orderDateTime );
-    $date               = gmdate( 'Y-m-d H:i:s', $fixedDateTimestamp );
+    if ( '' === $orderDate ) {
+      // WooCommerce replaces an empty date with time(), so an empty field (a cleared
+      // field, or a screen that does not post it) moved the order date to "now" on
+      // every status change. The stored date is kept instead.
+      $this->restorePostedOrderDate( $order );
 
-    // Fix POST data
-    $_POST['order_date']        = date( 'Y-m-d', $fixedDateTimestamp );
-    $_POST['order_date_hour']   = $orderDateHour;
-    $_POST['order_date_minute'] = $orderDateMinute;
-    $_POST['order_date_second'] = $orderDateSecond;
+      return;
+    }
 
-    $order->set_date_created( $date );
+    $orderDateHour   = (int) Number::toEnglish( wc_get_post_data_by_key( 'order_date_hour' ) );
+    $orderDateMinute = (int) Number::toEnglish( wc_get_post_data_by_key( 'order_date_minute' ) );
+    $orderDateSecond = (int) Number::toEnglish( wc_get_post_data_by_key( 'order_date_second' ) );
+
+    $orderDateObject = $this->parseOrderDate( $orderDate, $orderDateHour, $orderDateMinute,
+      $orderDateSecond );
+
+    if ( null === $orderDateObject ) {
+      // Not a date. Give WooCommerce back the date it already has instead of letting it
+      // store a Jalali string as if it were Gregorian.
+      $this->restorePostedOrderDate( $order );
+
+      return;
+    }
+
+    // WooCommerce saves the date itself at priority 40 from these fields, so they have to
+    // carry the converted date and not the Jalali one the screen posted.
+    $localDate = $this->fixPostedOrderDate( $orderDateObject );
+
+    // The screen also posts the date that is already stored: when the order is saved
+    // again without touching the date, or when the converted value comes back a second
+    // time. Saving it here would feed the converted date into the converter again and
+    // turn 1405-07-14 (2026-10-06) into 2647-12-27.
+    $createdDate = $order->get_date_created();
+
+    if ( $createdDate && $createdDate->format( 'Y-m-d H:i:s' ) === $localDate->format( 'Y-m-d H:i:s' ) ) {
+      return;
+    }
+
+    // Strings are read as a date in the site time zone, so hand it the local date.
+    $order->set_date_created( $localDate->format( 'Y-m-d H:i:s' ) );
     $order->save();
+  }
 
-    // Fix download expire date
-    $accessExpires = $_POST['access_expires'];
-    if ( ! empty( $accessExpires ) && is_array( $accessExpires ) ) {
-      foreach ( $accessExpires as $i => $expire ) {
-        $accessExpires[ $i ] = ! empty( $expire ) ? gregdate( 'Y-m-d', $expire ) : '';
+  /**
+   * Convert Jalali download expiry dates posted by the order edit screen
+   *
+   * @return void
+   * @since 6.4.1
+   */
+  private function fixPostedDownloadExpires(): void {
+    $accessExpires = Param::post( 'access_expires', null );
+
+    if ( empty( $accessExpires ) || ! is_array( $accessExpires ) ) {
+      return;
+    }
+
+    foreach ( $accessExpires as $i => $expire ) {
+      $expire = empty( $expire ) ? '' : Number::toEnglish( trim( $expire ) );
+
+      // A Gregorian value must not be converted again.
+      $accessExpires[ $i ] = '' !== $expire && (int) substr( $expire, 0, 4 ) < WPP_ParsiDate::GREGORIAN_YEAR_START ? gregdate( 'Y-m-d',
+        $expire ) : $expire;
+    }
+
+    $_POST['access_expires'] = $accessExpires;
+  }
+
+  /**
+   * Read a date posted by the order edit screen as a date in the site time zone
+   *
+   * Sites that show Jalali dates post a Jalali date, while WooCommerce itself only
+   * understands Gregorian ones. Both are accepted: the field may also carry a Gregorian
+   * value (Javascript disabled, or a site that only uses ParsiDate for formatting).
+   *
+   * The returned date keeps the wall clock that was entered, in the time zone of the site:
+   * that is how WooCommerce reads the order date fields.
+   *
+   * @param string $orderDate Posted date, such as 1405-07-14 or 2026-10-06
+   * @param int $hour
+   * @param int $minute
+   * @param int $second
+   *
+   * @return \DateTimeImmutable|null Null when the value is not a date in either calendar
+   * @since 6.4.1
+   */
+  private function parseOrderDate( string $orderDate, int $hour, int $minute, int $second ): ?\DateTimeImmutable {
+    $orderDate = trim( Number::toEnglish( $orderDate ) );
+
+    if ( ! preg_match( '/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/', $orderDate, $matches ) ) {
+      return null;
+    }
+
+    $year   = (int) $matches[1];
+    $month  = (int) $matches[2];
+    $day    = (int) $matches[3];
+
+    if ( $year < 1 || $month < 1 || $month > 12 || $day < 1 ) {
+      return null;
+    }
+
+    if ( $hour < 0 || $hour > 23 || $minute < 0 || $minute > 59 || $second < 0 || $second > 59 ) {
+      return null;
+    }
+
+    if ( $year < WPP_ParsiDate::GREGORIAN_YEAR_START ) {
+      $persianDate = WPP_ParsiDate::getInstance();
+
+      if ( $day > $persianDate->j_days_in_month[ $month - 1 ] ) {
+        // Esfand has 30 days in a leap year.
+        if ( 12 !== $month || 30 !== $day || ! $persianDate->IsPerLeapYear( $year ) ) {
+          return null;
+        }
       }
 
-      $_POST['access_expires'] = $accessExpires;
+      [ $year, $month, $day ] = $persianDate->persian_to_gregorian( $year, $month, $day );
     }
+
+    // Already Gregorian (e.g. 2026-09-18), or converted just above.
+    if ( ! checkdate( (int) $month, (int) $day, (int) $year ) ) {
+      return null;
+    }
+
+    $date = sprintf( '%04d-%02d-%02d %02d:%02d:%02d', $year, $month, $day, $hour, $minute, $second );
+
+    return \DateTimeImmutable::createFromFormat( 'Y-m-d H:i:s', $date, wp_timezone() ) ?: null;
+  }
+
+  /**
+   * Write a converted timestamp back into the order save request
+   *
+   * WooCommerce reads these fields as a time in the site time zone and turns them into
+   * UTC itself, so they must hold the local date. Neither wp_date() nor date_i18n() can be
+   * used here: they are filtered to Jalali dates, and the converted date would be
+   * converted again by the next handler that reads it.
+   *
+   * @param \DateTimeImmutable $localDate Date in the site time zone
+   *
+   * @return \DateTimeImmutable The date that was written to the request
+   * @since 6.4.1
+   */
+  private function fixPostedOrderDate( \DateTimeImmutable $localDate ): \DateTimeImmutable {
+    $_POST['order_date']        = $localDate->format( 'Y-m-d' );
+    $_POST['order_date_hour']   = (int) $localDate->format( 'H' );
+    $_POST['order_date_minute'] = (int) $localDate->format( 'i' );
+    $_POST['order_date_second'] = (int) $localDate->format( 's' );
+
+    return $localDate;
+  }
+
+  /**
+   * Keep the stored date of the order when the posted date cannot be read
+   *
+   * @param \WC_Order $order
+   *
+   * @return void
+   * @since 6.4.1
+   */
+  private function restorePostedOrderDate( $order ): void {
+    $createdDate = $order->get_date_created();
+
+    if ( ! $createdDate ) {
+      unset( $_POST['order_date'], $_REQUEST['order_date'] );
+
+      return;
+    }
+
+    $this->fixPostedOrderDate( ( new \DateTimeImmutable( '@' . $createdDate->getTimestamp() ) )->setTimezone( wp_timezone() ) );
+  }
+
+  /**
+   * Allow Persian numerals in WooCommerce date input HTML pattern
+   *
+   * @param string $pattern
+   *
+   * @return string
+   * @since 6.3.1
+   */
+  public function filterDateInputHtmlPattern( string $pattern ): string {
+    return '[0-9۰-۹]{4}-(0[1-9]|1[012]|۰[۱-۹]|۱[۰۱۲])-(0[1-9]|1[0-9]|2[0-9]|3[01]|۰[۱-۹]|۱[۰-۹]|۲[۰-۹]|۳[۰۱])';
   }
 
   /**
@@ -792,6 +1010,7 @@ class WooCommerce extends Addon {
     );
 
     if ( in_array( $currentScreen, $allowedScreens, true ) && Settings::get( 'persian_date' ) ) {
+      // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Legacy public hook name, kept for backward compatibility.
       do_action( 'wp_parsidate_jalali_datepicker_enqueue', 'wc' );
     }
 
@@ -877,8 +1096,10 @@ class WooCommerce extends Addon {
    * @return array|mixed|string|string[]
    */
   public function fixOrderReportQueryDateCallback( $date ) {
+    // phpcs:disable WordPress.Security.NonceVerification.Recommended -- Read-only report filter values of the WooCommerce reports screen, which has no nonce.
     $startDate = sanitize_text_field( wp_unslash( $_GET['start_date'] ?? '' ) );
     $endDate   = sanitize_text_field( wp_unslash( $_GET['end_date'] ?? '' ) );
+    // phpcs:enable WordPress.Security.NonceVerification.Recommended
 
     if ( empty( $startDate ) || empty( $endDate ) ) {
       return $date[0];
@@ -890,7 +1111,7 @@ class WooCommerce extends Addon {
       }
 
       $dt = gregdate( 'Y-m-d', $endDate );
-      $dt = date( 'Y-m-d', strtotime( "$dt +1 day" ) );
+      $dt = gmdate( 'Y-m-d', strtotime( "$dt +1 day" ) );
     } else {
       if ( (int) $startDate > 1900 ) {
         return $date[0];
@@ -911,13 +1132,18 @@ class WooCommerce extends Addon {
     if ( 'woocommerce_before_order_object_save' === current_action() ) {
       global $pagenow;
 
+      // phpcs:disable WordPress.Security.NonceVerification.Missing -- Read-only screen detection while WooCommerce saves the order (WooCommerce verifies its own nonce).
+
       if ( \WPParsidate\Helper\WooCommerce::hposEnabled() ) {
         $postID = (int) sanitize_text_field( wp_unslash( $_POST['post_ID'] ?? 0 ) );
 
         return $postID && 'shop_order' === get_post_type( $postID ) ? 'edit_order' : '';
       }
 
-      return is_admin() && 'post.php' === $pagenow && isset( $_POST['post_type'] ) && 'shop_order' === $_POST['post_type'] && ! empty( $_POST['order_date'] ) ? 'edit_order' : '';
+      $isEditOrder = is_admin() && 'post.php' === $pagenow && isset( $_POST['post_type'] ) && 'shop_order' === sanitize_key( wp_unslash( $_POST['post_type'] ) ) && ! empty( $_POST['order_date'] );
+      // phpcs:enable WordPress.Security.NonceVerification.Missing
+
+      return $isEditOrder ? 'edit_order' : '';
     }
 
     if ( 'admin_footer' === current_action() ) {
@@ -1043,6 +1269,7 @@ class WooCommerce extends Addon {
       ]
     );
 
+    // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Legacy public hook name, kept for backward compatibility.
     return apply_filters( 'wp_parsidate_' . $this->addonID . '_settings_options', $settings );
   }
 

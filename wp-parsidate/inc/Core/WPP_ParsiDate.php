@@ -2,6 +2,8 @@
 
 namespace WPParsidate\Core;
 
+use WPParsidate\Helper\Number;
+
 defined( 'ABSPATH' ) or exit( 'No direct script access allowed' );
 
 /**
@@ -16,6 +18,15 @@ defined( 'ABSPATH' ) or exit( 'No direct script access allowed' );
  */
 class WPP_ParsiDate {
   protected static $instance;
+
+  /**
+   * First year that is read as Gregorian by the date converters
+   *
+   * Jalali years are far below this, so a value at or above it is a Gregorian date that
+   * has already been converted (see gregorian_date()). Converting it once more would turn
+   * 2026-10-06 into 2647-12-27.
+   */
+  public const GREGORIAN_YEAR_START = 1900;
 
   public array $sessions = array( 'بهار', 'تابستان', 'پاییز', 'زمستان' );
 
@@ -316,6 +327,11 @@ class WPP_ParsiDate {
    * @return              false|string
    */
   public function gregorian_date( $format, $persianDate = '' ) {
+    // A date picked by the Jalali datepicker can arrive with Persian digits.
+    if ( is_string( $persianDate ) ) {
+      $persianDate = Number::toEnglish( $persianDate );
+    }
+
     preg_match_all( '!\d+!', $persianDate, $matches );
 
     $matches = $matches[0];
@@ -324,15 +340,26 @@ class WPP_ParsiDate {
       return $persianDate;
     }
 
-    [ $year, $mon, $day ] = $this->persian_to_gregorian(
-      $matches[0],
-      $matches[1],
-      $matches[2]
-    );
+    $mon = (int) $matches[1];
+    $day = (int) $matches[2];
 
-    return date(
+    if ( $mon < 1 || $mon > 12 || $day < 1 || $day > 31 ) {
+      return $persianDate;
+    }
+
+    if ( (int) $matches[0] >= self::GREGORIAN_YEAR_START ) {
+      $year = (int) $matches[0];
+    } else {
+      [ $year, $mon, $day ] = $this->persian_to_gregorian(
+        $matches[0],
+        $matches[1],
+        $matches[2]
+      );
+    }
+
+    return gmdate(
       $format,
-      mktime(
+      gmmktime(
         $matches[3] ?? 0,
         $matches[4] ?? 0,
         $matches[5] ?? 0,

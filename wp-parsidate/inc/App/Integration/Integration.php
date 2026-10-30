@@ -11,6 +11,7 @@ class Integration {
     // E-commerce
     new WooCommerce();
     new EDD();
+    new Dokan();
     new BulkyBulkEditProductsWooCommerce();
 
     // Marketing
@@ -18,6 +19,7 @@ class Integration {
     // Customizations
     new ACF();
     new JetEngine();
+    new Directories();
     new UltimateMember();
 
     // SEO
