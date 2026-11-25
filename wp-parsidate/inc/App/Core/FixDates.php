@@ -10,7 +10,7 @@ namespace WPParsidate\App\Core;
 use DateTimeZone;
 use WPParsidate\App\Tools\HookDeactivator;
 use WPParsidate\Core\Names;
-use WPParsidate\Helper\{Date, Number, WordPress};
+use WPParsidate\Helper\{Number, WordPress};
 use WPParsidate\Settings\Settings;
 
 class FixDates {
@@ -20,7 +20,6 @@ class FixDates {
       add_filter( 'the_time', [ $this, 'fixPostTime' ], 10, 2 );
       add_filter( 'get_the_time', [ $this, 'fixPostTime' ], 10, 3 );
 
-      add_filter( 'the_date', [ $this, 'fixPostDate' ], 10, 2 );
       add_filter( 'get_the_date', [ $this, 'fixPostDate' ], 100, 3 );
 
       add_filter( 'get_the_modified_date', [ $this, 'fixModifiedDate' ], 10, 3 );
@@ -60,24 +59,40 @@ class FixDates {
       return $date;
     }
 
+    // The Unix timestamp format is timezone-independent. Preserve WordPress' output.
+    if ( 'U' === $format ) {
+      return $date;
+    }
+
+    $callerFormat       = $format;
     $adjustedTimestamp = $timestamp;
 
     try {
       $timezone = $timezone instanceof DateTimeZone ? $timezone : new DateTimeZone( $timezone ?: wp_timezone() );
 
-      // wp_date() passes a pure UTC Unix timestamp
-      // We need to add the timezone offset to convert to local time for date formatting
-      $offset = Date::getTimeZoneOffset( $timezone );
-
-      if ( ! empty( $timestamp ) && $offset !== 0 ) {
-        $tzOffset          = (int) ( $offset * HOUR_IN_SECONDS );
-        $adjustedTimestamp = $timestamp + $tzOffset;
-      }
+      // Use the offset at the requested instant, not the current offset.
+      // Historical/future dates may have different daylight-saving rules.
+      $instant           = new \DateTimeImmutable( '@' . $timestamp );
+      $offsetSeconds     = $timezone->getOffset( $instant );
+      $adjustedTimestamp = $timestamp + $offsetSeconds;
     } catch ( \DateInvalidTimeZoneException $e ) {
-      // If timezone is invalid, use original timestamp
+      // If timezone is invalid, retain the original timestamp.
     }
 
-    return $this->formatDate( $format, $adjustedTimestamp, $date );
+    // The Unix timestamp (U) is absolute even when mixed with local Jalali tokens.
+    // Inline only unescaped U specifiers before passing the format to the
+    // legacy formatter, which otherwise resets output at U and uses local time.
+    if ( false !== strpos( $format, 'U' ) ) {
+      $format = preg_replace_callback(
+        '/\\\\.|U/',
+        static function ( $token ) use ( $timestamp ) {
+          return 'U' === $token[0] ? (string) $timestamp : $token[0];
+        },
+        $format
+      );
+    }
+
+    return $this->formatDate( $format, $adjustedTimestamp, $date, $callerFormat );
   }
 
   /**
@@ -189,14 +204,14 @@ class FixDates {
    */
   public function fixModifiedDate( $time, $format, $post ): string {
     if ( $post === null ) {
-      return $time;
+      return (string) $time;
     }
 
     if ( 'c' === $format ) {
       return gmdate( $format, strtotime( $post->post_modified ) );
     }
 
-    return $time;
+    return (string) $time;
   }
 
   /**
@@ -204,6 +219,7 @@ class FixDates {
    *
    * @param string $time Post time
    * @param string $format Date format
+   * @param \WP_Post|int|null $post Post object or post ID.
    *
    * @return          string Formatted date
    */
@@ -215,7 +231,7 @@ class FixDates {
     }
 
     if ( empty( $post ) ) {
-      return $time;
+      return (string) $time;
     }
 
     if ( empty( $format ) ) {
@@ -226,7 +242,7 @@ class FixDates {
       return gmdate( $format, strtotime( $post->post_date ) );
     }
 
-    return $this->formatDate( $format, $post->post_date, $time );
+    return $this->formatDate( $format, $post->post_date, (string) $time );
   }
 
   /**
@@ -234,6 +250,7 @@ class FixDates {
    *
    * @param string $time Post time
    * @param string $format Date format
+   * @param \WP_Post|int|null $post Post object or post ID.
    *
    * @return string Formatted date
    */
@@ -246,10 +263,10 @@ class FixDates {
 
     // It seems some plugin like acf does not exist $post.
     if ( ! $post ) {
-      return $time;
+      return (string) $time;
     }
     if ( function_exists( 'pll_current_language' ) && pll_current_language() !== "fa" ) {
-      return $time;
+      return (string) $time;
     }
     if ( empty( $format ) ) {
       $format = (string) get_option( 'date_format', 'F j, Y' );
@@ -259,7 +276,7 @@ class FixDates {
       return gmdate( $format, strtotime( $post->post_date ) );
     }
 
-    return $this->formatDate( $format, gmdate( 'Y-m-d H:i:s', strtotime( $post->post_date ) ), $time );
+    return $this->formatDate( $format, gmdate( 'Y-m-d H:i:s', strtotime( $post->post_date ) ), (string) $time );
   }
 
   /**
@@ -268,17 +285,18 @@ class FixDates {
    * @param string $format PHP date format string.
    * @param mixed $dateTime Date/time value (timestamp, date string, or DateTimeInterface).
    * @param string $fallbackGregorianDate Fallback Gregorian date string used when timestamp cannot be resolved.
+   * @param string|null $callerFormat Unmodified caller format for public Dual Date hooks.
    *
    * @return string Jalali-formatted date string, with optional dual-date suffix.
    */
-  private function formatDate( string $format, $dateTime, string $fallbackGregorianDate = '' ): string {
+  private function formatDate( string $format, $dateTime, string $fallbackGregorianDate = '', ?string $callerFormat = null ): string {
     $jalaliDate = parsidate( $format, $dateTime, Settings::get( 'conv_dates' ) );
 
     if ( ! Settings::get( 'dual_date', false ) ) {
       return $jalaliDate;
     }
 
-    return $this->appendGregorianDate( $jalaliDate, $format, $dateTime, $fallbackGregorianDate );
+    return $this->appendGregorianDate( $jalaliDate, $format, $dateTime, $fallbackGregorianDate, $callerFormat );
   }
 
   /**
@@ -288,21 +306,23 @@ class FixDates {
    * @param string $format PHP date format string used for formatting.
    * @param mixed $dateTime Original date/time value.
    * @param string $fallbackGregorianDate Fallback Gregorian date string used when timestamp cannot be resolved.
+   * @param string|null $callerFormat Unmodified caller format for public Dual Date hooks.
    *
    * @return string Jalali date string, optionally followed by a separator and the Gregorian date.
    */
-  private function appendGregorianDate( string $jalaliDate, string $format, $dateTime, string $fallbackGregorianDate = '' ): string {
-    if ( ! $this->isDualDateFormat( $format ) ) {
+  private function appendGregorianDate( string $jalaliDate, string $format, $dateTime, string $fallbackGregorianDate = '', ?string $callerFormat = null ): string {
+    $originalFormat = $callerFormat ?? $format;
+    if ( ! $this->isDualDateFormat( $originalFormat ) ) {
       return $jalaliDate;
     }
 
-    $gregorianDate = $this->formatGregorianDate( $format, $dateTime, $fallbackGregorianDate );
+    $gregorianDate = $this->formatGregorianDate( $format, $dateTime, $fallbackGregorianDate, $originalFormat );
     if ( $gregorianDate === '' || $gregorianDate === $jalaliDate ) {
       return $jalaliDate;
     }
 
     // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Legacy public hook name, kept for backward compatibility.
-    $separator = apply_filters( 'wp_parsidate_dual_date_separator', ' - ', $format, $dateTime );
+    $separator = apply_filters( 'wp_parsidate_dual_date_separator', ' - ', $originalFormat, $dateTime );
 
     return $jalaliDate . $separator . $gregorianDate;
   }
@@ -358,10 +378,11 @@ class FixDates {
    * @param string $format PHP date format string.
    * @param mixed $dateTime Date/time value (timestamp, date string, or DateTimeInterface).
    * @param string $fallbackGregorianDate Fallback string returned when timestamp cannot be resolved.
+   * @param string|null $callerFormat Unmodified caller format for public Dual Date hooks.
    *
    * @return string Formatted Gregorian date string.
    */
-  private function formatGregorianDate( string $format, $dateTime, string $fallbackGregorianDate = '' ): string {
+  private function formatGregorianDate( string $format, $dateTime, string $fallbackGregorianDate = '', ?string $callerFormat = null ): string {
     $timestamp = $this->getTimestamp( $dateTime );
 
     if ( is_null( $timestamp ) ) {
@@ -376,7 +397,7 @@ class FixDates {
     }
 
     // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Legacy public hook name, kept for backward compatibility.
-    return apply_filters( 'wp_parsidate_dual_date_gregorian', $date, $format, $dateTime, $fallbackGregorianDate );
+    return apply_filters( 'wp_parsidate_dual_date_gregorian', $date, $callerFormat ?? $format, $dateTime, $fallbackGregorianDate );
   }
 
   /**

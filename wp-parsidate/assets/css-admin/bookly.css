@@ -1,0 +1,21 @@
+.bookly-form .wppd-bookly-native-calendar {
+  display: none !important;
+}
+
+.bookly-form .wppd-bookly-date-input {
+  cursor: pointer;
+}
+
+.bookly-form .wppd-bookly-date-status {
+  display: block;
+  margin-top: 0.375rem;
+  color: #b32d2e;
+  text-align: start;
+}
+
+.bookly-services-form-container .wppd-bookly-pro-services-form-date,
+.bookly-search-form-container .wppd-bookly-pro-services-form-date,
+.bookly-staff-form-container .wppd-bookly-pro-services-form-date,
+.bookly-tags-form-container .wppd-bookly-pro-services-form-date {
+  cursor: pointer;
+}

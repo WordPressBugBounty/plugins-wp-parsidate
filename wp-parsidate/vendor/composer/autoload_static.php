@@ -4,7 +4,7 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit28b7438669d760234aa27dffd45581b6
+class ComposerStaticInit7b2aba79f14b91d59c377ef0c7625074
 {
     public static $files = array (
         'a4a119a56e50fbb293281d9a48007e0e' => __DIR__ . '/..' . '/symfony/polyfill-php80/bootstrap.php',
@@ -103,6 +103,7 @@ class ComposerStaticInit28b7438669d760234aa27dffd45581b6
         'WPParsidate\\App\\Core\\ShamsiDate' => __DIR__ . '/../..' . '/inc/App/Core/ShamsiDate.php',
         'WPParsidate\\App\\Integration\\ACF' => __DIR__ . '/../..' . '/inc/App/Integration/ACF.php',
         'WPParsidate\\App\\Integration\\Booked' => __DIR__ . '/../..' . '/inc/App/Integration/Booked.php',
+        'WPParsidate\\App\\Integration\\Bookly' => __DIR__ . '/../..' . '/inc/App/Integration/Bookly.php',
         'WPParsidate\\App\\Integration\\Brizy' => __DIR__ . '/../..' . '/inc/App/Integration/Brizy.php',
         'WPParsidate\\App\\Integration\\BulkyBulkEditProductsWooCommerce' => __DIR__ . '/../..' . '/inc/App/Integration/BulkyBulkEditProductsWooCommerce.php',
         'WPParsidate\\App\\Integration\\Directories' => __DIR__ . '/../..' . '/inc/App/Integration/Directories.php',
@@ -114,12 +115,15 @@ class ComposerStaticInit28b7438669d760234aa27dffd45581b6
         'WPParsidate\\App\\Integration\\JetEngine' => __DIR__ . '/../..' . '/inc/App/Integration/JetEngine.php',
         'WPParsidate\\App\\Integration\\LimitLoginAttempts' => __DIR__ . '/../..' . '/inc/App/Integration/LimitLoginAttempts.php',
         'WPParsidate\\App\\Integration\\MonsterInsights' => __DIR__ . '/../..' . '/inc/App/Integration/MonsterInsights.php',
+        'WPParsidate\\App\\Integration\\PLoadDemo' => __DIR__ . '/../..' . '/inc/App/Integration/PLoadDemo.php',
         'WPParsidate\\App\\Integration\\ParsigateDemo' => __DIR__ . '/../..' . '/inc/App/Integration/ParsigateDemo.php',
+        'WPParsidate\\App\\Integration\\Pods' => __DIR__ . '/../..' . '/inc/App/Integration/Pods.php',
         'WPParsidate\\App\\Integration\\RankMath' => __DIR__ . '/../..' . '/inc/App/Integration/RankMath.php',
         'WPParsidate\\App\\Integration\\SchemaPro' => __DIR__ . '/../..' . '/inc/App/Integration/SchemaPro.php',
         'WPParsidate\\App\\Integration\\TapChatDemo' => __DIR__ . '/../..' . '/inc/App/Integration/TapChatDemo.php',
         'WPParsidate\\App\\Integration\\UltimateMember' => __DIR__ . '/../..' . '/inc/App/Integration/UltimateMember.php',
         'WPParsidate\\App\\Integration\\WooCommerce' => __DIR__ . '/../..' . '/inc/App/Integration/WooCommerce.php',
+        'WPParsidate\\App\\Integration\\WooCommerce\\GatewayMigration' => __DIR__ . '/../..' . '/inc/App/Integration/WooCommerce/GatewayMigration.php',
         'WPParsidate\\App\\Integration\\WooCommerce\\WcGateways' => __DIR__ . '/../..' . '/inc/App/Integration/WooCommerce/WcGateways.php',
         'WPParsidate\\App\\Integration\\WooCommerce\\WooCommerceCitySelect' => __DIR__ . '/../..' . '/inc/App/Integration/WooCommerce/WooCommerceCitySelect.php',
         'WPParsidate\\App\\Tools\\HookDeactivator' => __DIR__ . '/../..' . '/inc/App/Tools/HookDeactivator.php',
@@ -182,9 +186,9 @@ class ComposerStaticInit28b7438669d760234aa27dffd45581b6
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit28b7438669d760234aa27dffd45581b6::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit28b7438669d760234aa27dffd45581b6::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInit28b7438669d760234aa27dffd45581b6::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit7b2aba79f14b91d59c377ef0c7625074::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit7b2aba79f14b91d59c377ef0c7625074::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInit7b2aba79f14b91d59c377ef0c7625074::$classMap;
 
         }, null, ClassLoader::class);
     }

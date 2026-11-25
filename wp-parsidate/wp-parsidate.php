@@ -2,7 +2,7 @@
 
 /**
  * Plugin Name: پارسی دیت – Parsi Date
- * Version: 6.5.2
+ * Version: 6.6
  * Plugin URI: https://wp-parsi.com/support/
  * Description: Persian package for WordPress, Adds full RTL and Shamsi (Jalali) support for: posts, comments, pages, archives, search, categories, permalinks and all admin sections and TinyMce editor, lists, quick editor. This package has Jalali archive widget.
  * Author: WP-Parsi Team
@@ -51,7 +51,7 @@ defined( 'ABSPATH' ) || exit;
  * @author              Mobin Ghasempoor
  * @author              Morteza Geransayeh
  * @link                https://wp-parsi.com/
- * @version             5.1.6
+ * @version             6.6
  * @license             http://www.gnu.org/licenses/gpl-3.0.html GNU Public License v3.0
  * @package             WP-Parsidate
  * @subpackage          Core

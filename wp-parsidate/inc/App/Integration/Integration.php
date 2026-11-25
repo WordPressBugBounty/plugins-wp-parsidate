@@ -21,6 +21,7 @@ class Integration {
     new ACF();
     new JetEngine();
     new Directories();
+    new Pods();
     new UltimateMember();
 
     // SEO
@@ -41,6 +42,7 @@ class Integration {
     new LimitLoginAttempts();
 
     // Tools
+    new Bookly();
     new Booked();
   }
 }

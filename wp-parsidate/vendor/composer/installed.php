@@ -1,13 +1,13 @@
 <?php return array(
     'root' => array(
         'name' => 'wordpress-parsi/wp-parsidate',
-        'pretty_version' => 'dev-master',
-        'version' => 'dev-master',
-        'reference' => '80446d8b08af79d632a85d31e15a0a3a7092d77f',
+        'pretty_version' => '1.0.0+no-version-set',
+        'version' => '1.0.0.0',
+        'reference' => null,
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
-        'dev' => true,
+        'dev' => false,
     ),
     'versions' => array(
         'enshrined/svg-sanitize' => array(
@@ -47,9 +47,9 @@
             'dev_requirement' => false,
         ),
         'wordpress-parsi/wp-parsidate' => array(
-            'pretty_version' => 'dev-master',
-            'version' => 'dev-master',
-            'reference' => '80446d8b08af79d632a85d31e15a0a3a7092d77f',
+            'pretty_version' => '1.0.0+no-version-set',
+            'version' => '1.0.0.0',
+            'reference' => null,
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

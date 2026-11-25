@@ -4,7 +4,7 @@ Donate link: https://wp-parsi.com/support/
 Tags: Shamsi, Persian, Jalali, WooCommerce, ووکامرس
 Requires at least: 5.3
 Tested up to: 7.1
-Stable tag: 6.5.2
+Stable tag: 6.6
 Requires PHP: 7.4
 License: GPLv3
 
@@ -66,7 +66,33 @@ ParsiDate is a powerful plugin developed by Persian contributors to enhance the 
 6. Addon tab
 7. WooCommerce settings
 
+== Upgrade Notice ==
+
+= 6.6 =
+If you use a Parsi Date bank gateway (Parsian, Pasargad, Mellat, Melli), install ParsiGate: the gateways will be removed from Parsi Date in version 7.0. / اگر از درگاه بانکی پارسی‌دیت استفاده می‌کنید، پارسی‌گیت را نصب کنید؛ درگاه‌ها در نسخه‌ی ۷.۰ حذف می‌شوند.
+
 == Changelog ==
+
+= 6.6 =
+* Security: SQL injection through the WooCommerce reports `start_date`/`end_date` query arguments. Only a valid Jalali or Gregorian date is used now; any other value is dropped before it reaches the report query.
+* Security: Melli (Sadad) gateway now also checks the amount and order id confirmed by the bank, and that the order still needs payment, before completing an order (hardens the payment-verification fix of 6.5)
+* Security: Stored XSS in post content through the number converter. It rebuilt the post with DOMDocument and libxml wrote attribute text after `&{` back unescaped, so an escaped attribute inside an element such as `<title>` could turn into live markup. Digits are now converted without re-serializing the markup.
+* Deprecated: The built-in bank gateways (Parsian, Pasargad, Mellat, Melli) move to [ParsiGate](https://wordpress.org/plugins/parsigate/) and will be removed in Parsi Date 7.0. Sites that use them get a notice with one-click installation of ParsiGate, which imports their gateway settings.
+* Add: Pods integration for Jalali date and datetime fields. [#issue](https://github.com/wordpress-parsi/wp-parsidate/issues/360)
+* Add: Bookly integration. Jalali dates in the Free booking form, the Pro calendar and service forms, the AI assistant, the admin calendar and date range, and the Appearance preview, each switchable on its own under Frontend and Admin. [#issue](https://github.com/wordpress-parsi/wp-parsidate/issues/326)
+* Fix: WooCommerce order date became wrong (e.g. 784-04-28) after updating the order on sites with a persistent object cache
+* Fix: Dashicons showed as boxes or letters in the block editor, admin bar, Yoast SEO and WooCommerce screens when the Vazir font was enabled (#280)
+* Fix: Numbers inside Latin names in post titles were converted to Persian digits (e.g. S22 became S۲۲) (#357)
+* Fix: wp_date() returned a wrong Unix timestamp for the "U" format and used the current daylight-saving offset for past and future dates
+* Fix: Dual-date hooks (wp_parsidate_dual_date_gregorian, wp_parsidate_dual_date_separator) received a modified format instead of the original one
+* Fix: Jalali day of the year (format "z") returned wrong values
+* Fix: Validating Jalali dates used Gregorian month lengths and caused PHP warnings (e.g. 31 Shahrivar, 30 Esfand in leap years)
+* Fix: Add-ons could stay switched off after their required plugin came back, because the activation check cached the required-plugin count permanently
+* Fix: A null value reaching the number helper threw a TypeError on PHP 8
+* Fix: Internal placeholders (`%%WPPTXT_…%%`) could show up in content when a block such as `<code>` sat inside an unclosed `<title>`, `<textarea>` or `<iframe>` (digit conversion, Arabic letter conversion, Brizy)
+* Fix: `parsidate()` format `L` reported the Jalali leap flag with a Gregorian 4-year rule, so 1400 looked leap and 1399/1403 looked common
+* Fix: The shared datepicker watcher overwrote date-only markers on fields that had opted into `data-jdp-only-datetime` or `data-jdp-only-time`, dropping their time section
+* Dev: Removed CSS source maps from the release; PHPUnit (PHP 7.4-8.4) and JavaScript test suites added, run on pull requests and release tags
 
 = 6.5.2 =
 * Add: [PLoad](https://wordpress.org/plugins/pload/) demo addon
